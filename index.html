@@ -166,10 +166,10 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
       <div class="page-head"><div><h2>Ürünler</h2><p><span id="pcount">0</span> ürün kayıtlı. Asistan yalnızca burada yazan bilgiyle cevap verir.</p></div></div>
       <div class="card">
         <h3>CSV ile ürün yükle</h3>
-        <p class="hint">Sütunlar: <code>product_main_id</code>, <code>url</code>, <code>info</code>, isteğe bağlı <code>title</code>. Aynı <code>product_main_id</code> tekrar yüklenirse güncellenir. Excel'den "CSV UTF-8" olarak kaydet.</p>
+        <p class="hint">Sütunlar: <code>product_main_id</code> ve <code>info</code>. Aynı <code>product_main_id</code> tekrar yüklenirse güncellenir. Excel'den "CSV UTF-8" olarak kaydet.</p>
         <div class="row"><input id="csv" type="file" accept=".csv,text/csv"></div>
       </div>
-      <input id="psearch" type="search" placeholder="Ürün ara (kod, başlık veya bilgi)" aria-label="Ürün ara" style="margin-bottom:12px">
+      <input id="psearch" type="search" placeholder="Ürün ara (kod veya bilgi)" aria-label="Ürün ara" style="margin-bottom:12px">
       <div id="plist"></div>
     </section>
 
@@ -345,7 +345,7 @@ $("#check-now").onclick = async (ev) => {
 
 // ---------- Ürünler ----------
 async function loadProducts() {
-  const { data, error } = await sb.from("products").select("product_main_id,title,url,info").order("product_main_id").limit(500);
+  const { data, error } = await sb.from("products").select("product_main_id,info").order("product_main_id").limit(500);
   if (error) { toast(error.message, true); return; }
   state.products = data; renderProducts();
 }
@@ -353,11 +353,11 @@ async function loadProducts() {
 function renderProducts() {
   const all = state.products, q = $("#psearch").value.trim().toLowerCase();
   $("#pcount").textContent = all.length;
-  const list = q ? all.filter((p) => [p.product_main_id, p.title, p.info].some((v) => String(v ?? "").toLowerCase().includes(q))) : all;
+  const list = q ? all.filter((p) => [p.product_main_id, p.info].some((v) => String(v ?? "").toLowerCase().includes(q))) : all;
   const box = $("#plist");
   if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>Yukarıdan bir CSV dosyası yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
   if (!list.length) { box.innerHTML = `<div class="empty"><h3>Eşleşen ürün yok</h3><p>Aramayı değiştir.</p></div>`; return; }
-  box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="t">${esc(p.title || "Başlıksız")}</span><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span></div>`).join("")}</div>`;
+  box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span></div>`).join("")}</div>`;
 }
 $("#psearch").oninput = renderProducts;
 
@@ -388,7 +388,7 @@ $("#csv").onchange = async (ev) => {
     const { data: { session } } = await sb.auth.getSession();
     const recs = rows.map((r) => { const o = {}; h.forEach((k, i) => (o[k] = (r[i] ?? "").trim())); return o; })
       .filter((o) => o.product_main_id && o.info)
-      .map((o) => ({ user_id: session.user.id, product_main_id: o.product_main_id, title: o.title || null, url: o.url || null, info: o.info }));
+      .map((o) => ({ user_id: session.user.id, product_main_id: o.product_main_id, info: o.info }));
     if (!recs.length) throw new Error("Geçerli satır bulunamadı");
     for (let i = 0; i < recs.length; i += 200) {
       const { error } = await sb.from("products").upsert(recs.slice(i, i + 200), { onConflict: "user_id,product_main_id" });
