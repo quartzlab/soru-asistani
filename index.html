@@ -55,6 +55,10 @@ code{background:#eef0f3;padding:1px 5px;border-radius:3px;font-size:13px}
     <p style="margin-top:8px">Bilgileri Satıcı Paneli &gt; Hesap Bilgilerim &gt; Entegrasyon Bilgileri sayfasından alırsın. Kaydedilmeden önce Trendyol'da doğrulanır, şifreli saklanır ve bir daha gösterilmez.</p>
     <div class="row"><button id="save-cred">Bağlantıyı kaydet</button></div>
     <div class="msg" id="cred-msg"></div>
+    <label for="claudekey" style="margin-top:14px">Anthropic API anahtarı</label><input id="claudekey" type="password" autocomplete="off">
+    <p style="margin-top:8px">Anahtarı console.anthropic.com &gt; API Keys sayfasından alırsın. Cevap üretme ücreti senin Anthropic hesabından düşer. Önce Trendyol bağlantısını kaydetmelisin. Anahtar doğrulanır, şifreli saklanır ve bir daha gösterilmez.</p>
+    <div class="row"><button id="save-claude">Anahtarı kaydet</button></div>
+    <div class="msg" id="claude-msg"></div>
     <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:14px"><input type="checkbox" id="auto"> Uygun cevapları onay beklemeden otomatik gönder</label>
   </section>
 
@@ -105,7 +109,7 @@ async function refresh() {
   try {
     const st = await api("status");
     $("#conn").textContent = st.connected
-      ? `Bağlı: satıcı ${st.seller_id}.` + (st.last_error ? ` Son hata: ${st.last_error}` : "")
+      ? `Bağlı: satıcı ${st.seller_id}. Anthropic anahtarı: ${st.has_anthropic_key ? "kayıtlı" : "eksik"}.` +(st.last_error ? ` Son hata: ${st.last_error}` : "")
       : "Henüz bağlanmadı. Aşağıya Trendyol bilgilerini gir.";
     $("#auto").checked = !!st.auto_send;
   } catch (e) { $("#conn").textContent = e.message; }
@@ -150,7 +154,13 @@ $("#save-cred").onclick = async (ev) => {
   } catch (e) { say("#cred-msg", e.message); }
   ev.target.disabled = false;
 };
-$("#auto").onchange = (e) => api("set_auto_send", { value: e.target.checked }).catch((x) => say("#cred-msg", x.message));
+$("#save-claude").onclick = async (ev) => {
+  ev.target.disabled = true; say("#claude-msg", "Anthropic'te doğrulanıyor…", true);
+  try { await api("save_anthropic_key", { api_key: $("#claudekey").value }); $("#claudekey").value = ""; say("#claude-msg", "Anahtar doğrulandı ve kaydedildi.", true); refresh(); }
+  catch (e) { say("#claude-msg", e.message); }
+  ev.target.disabled = false;
+};
+$("#auto").onchange =(e) => api("set_auto_send", { value: e.target.checked }).catch((x) => say("#cred-msg", x.message));
 
 $("#qs").onclick = async (ev) => {
   const id = ev.target.dataset.send; if (!id) return;
