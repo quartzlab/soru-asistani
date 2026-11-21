@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soru Asistanı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f5f7;--ink:#18212b;--mute:#5d6877;--line:#d8dde4;--card:#fff;--accent:#0b57d0;--ok:#1b7f55;--warn:#a8520a;--bad:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:0 0 4px}
+p{margin:0 0 12px;color:var(--mute)}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:18px;margin-top:16px}
+label{display:block;font-weight:500;margin:10px 0 4px}
+input[type=text],input[type=email],input[type=password],textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:4px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:84px;resize:vertical}
+button{font:inherit;font-weight:500;padding:8px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.alt{background:#fff;color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.msg{margin-top:10px;font-weight:500}.msg.ok{color:var(--ok)}.msg.err{color:var(--bad)}
+.q{border-top:1px solid var(--line);padding:14px 0}.q:first-child{border-top:0}
+.q .meta{color:var(--mute);font-size:13px}
+.q .text{font-weight:500;margin:4px 0 8px}
+.tag{font-size:13px;font-weight:500}.tag.sent{color:var(--ok)}.tag.pending_review{color:var(--accent)}.tag.skipped{color:var(--warn)}.tag.failed{color:var(--bad)}
+code{background:#eef0f3;padding:1px 5px;border-radius:3px;font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><h1>Soru Asistanı</h1><div id="who-box" hidden><span id="who" class="meta"></span> <button class="alt" id="logout">Çıkış</button></div></div>
+
+<section id="auth">
+  <h2>Giriş yap</h2>
+  <p>Hesabın yoksa aynı bilgilerle kayıt ol.</p>
+  <label for="email">E-posta</label><input id="email" type="email" autocomplete="email">
+  <label for="pass">Parola</label><input id="pass" type="password" autocomplete="current-password">
+  <div class="row"><button id="login">Giriş yap</button><button class="alt" id="signup">Kayıt ol</button></div>
+  <div class="msg" id="auth-msg"></div>
+</section>
+
+<div id="panel" hidden>
+  <section>
+    <h2>Trendyol bağlantısı</h2>
+    <p id="conn">Yükleniyor…</p>
+    <label for="sid">Satıcı ID</label><input id="sid" type="text" inputmode="numeric">
+    <label for="akey">API Key</label><input id="akey" type="password" autocomplete="off">
+    <label for="asec">API Secret</label><input id="asec" type="password" autocomplete="off">
+    <p style="margin-top:8px">Bilgileri Satıcı Paneli &gt; Hesap Bilgilerim &gt; Entegrasyon Bilgileri sayfasından alırsın. Kaydedilmeden önce Trendyol'da doğrulanır, şifreli saklanır ve bir daha gösterilmez.</p>
+    <div class="row"><button id="save-cred">Bağlantıyı kaydet</button></div>
+    <div class="msg" id="cred-msg"></div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:14px"><input type="checkbox" id="auto"> Uygun cevapları onay beklemeden otomatik gönder</label>
+  </section>
+
+  <section>
+    <h2>Ürün bilgileri</h2>
+    <p><span id="pcount">0</span> ürün kayıtlı. CSV dosyasında şu sütunlar olmalı: <code>product_main_id</code>, <code>url</code>, <code>info</code> (isteğe bağlı <code>title</code>). Aynı <code>product_main_id</code> tekrar yüklenirse güncellenir. Excel'den "CSV UTF-8" olarak kaydet.</p>
+    <input id="csv" type="file" accept=".csv,text/csv">
+    <div class="msg" id="csv-msg"></div>
+  </section>
+
+  <section>
+    <div class="top"><h2>Sorular ve cevaplar</h2><button class="alt" id="reload">Yenile</button></div>
+    <p>Yeni sorular yaklaşık 15 dakikada bir işlenir. Onay bekleyen cevabı düzenleyip gönderebilirsin.</p>
+    <div id="qs"></div>
+  </section>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// Bu iki değer herkese açık olabilir (güvenliği RLS ve giriş sağlar). service_role anahtarını ASLA buraya koyma.
+const SUPABASE_URL = "https://ychhefzfregkspjskpgh.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljaGhlZnpmcmVna3NwanNrcGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzkxNjYsImV4cCI6MjExMDg1NTE2Nn0.6y05vuq0DdWqMmiJ58whLeDheU7qf55_I1lqjzhdaEQ";
+
+const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const say = (sel, text, ok) => { const e = $(sel); e.textContent = text; e.className = "msg " + (ok ? "ok" : "err"); };
+const LABEL = { pending_review: "Onay bekliyor", sent: "Gönderildi", skipped: "Atlandı", failed: "Hata", new: "İşleniyor" };
+
+async function api(action, extra = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/account`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, apikey: ANON_KEY },
+    body: JSON.stringify({ action, ...extra }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Hata ${r.status}`);
+  return j;
+}
+
+async function refresh() {
+  const { data: { session } } = await sb.auth.getSession();
+  $("#auth").hidden = !!session; $("#panel").hidden = !session; $("#who-box").hidden = !session;
+  if (!session) return;
+  $("#who").textContent = session.user.email + " ";
+  try {
+    const st = await api("status");
+    $("#conn").textContent = st.connected
+      ? `Bağlı: satıcı ${st.seller_id}.` + (st.last_error ? ` Son hata: ${st.last_error}` : "")
+      : "Henüz bağlanmadı. Aşağıya Trendyol bilgilerini gir.";
+    $("#auto").checked = !!st.auto_send;
+  } catch (e) { $("#conn").textContent = e.message; }
+  const { count } = await sb.from("products").select("*", { count: "exact", head: true });
+  $("#pcount").textContent = count ?? 0;
+  loadQuestions();
+}
+
+async function loadQuestions() {
+  const { data, error } = await sb.from("questions").select("*").order("created_at", { ascending: false }).limit(50);
+  if (error) { $("#qs").textContent = error.message; return; }
+  if (!data.length) { $("#qs").innerHTML = "<p>Henüz soru yok. Bağlantıyı kaydedip ürünlerini yükledikten sonra yeni sorular burada görünür.</p>"; return; }
+  $("#qs").innerHTML = data.map((q) => `
+    <div class="q" data-id="${q.id}">
+      <div class="meta">${esc(q.product_name || q.product_main_id || "Ürün")} · ${q.asked_at ? new Date(q.asked_at).toLocaleString("tr-TR") : ""}</div>
+      <div class="text">${esc(q.question_text)}</div>
+      <span class="tag ${q.status}">${LABEL[q.status] || q.status}</span>
+      ${q.error ? `<div class="meta">${esc(q.error)}</div>` : ""}
+      ${q.status === "pending_review"
+        ? `<textarea>${esc(q.draft)}</textarea><div class="row"><button data-send="${q.id}">Onayla ve gönder</button></div><div class="msg"></div>`
+        : (q.draft ? `<div class="meta" style="margin-top:6px">${esc(q.draft)}</div>` : "")}
+    </div>`).join("");
+}
+
+$("#login").onclick = async () => {
+  const { error } = await sb.auth.signInWithPassword({ email: $("#email").value, password: $("#pass").value });
+  if (error) say("#auth-msg", error.message); else refresh();
+};
+$("#signup").onclick = async () => {
+  const { error } = await sb.auth.signUp({ email: $("#email").value, password: $("#pass").value });
+  if (error) say("#auth-msg", error.message); else say("#auth-msg", "Kayıt oluşturuldu. E-postandaki doğrulama bağlantısına tıkla, sonra giriş yap.", true);
+};
+$("#logout").onclick = async () => { await sb.auth.signOut(); refresh(); };
+$("#reload").onclick = loadQuestions;
+
+$("#save-cred").onclick = async (ev) => {
+  ev.target.disabled = true; say("#cred-msg", "Trendyol'da doğrulanıyor…", true);
+  try {
+    await api("save_credentials", { seller_id: $("#sid").value, api_key: $("#akey").value, api_secret: $("#asec").value });
+    $("#akey").value = ""; $("#asec").value = "";
+    say("#cred-msg", "Bağlantı doğrulandı ve kaydedildi.", true); refresh();
+  } catch (e) { say("#cred-msg", e.message); }
+  ev.target.disabled = false;
+};
+$("#auto").onchange = (e) => api("set_auto_send", { value: e.target.checked }).catch((x) => say("#cred-msg", x.message));
+
+$("#qs").onclick = async (ev) => {
+  const id = ev.target.dataset.send; if (!id) return;
+  const box = ev.target.closest(".q"); ev.target.disabled = true;
+  try { await api("approve", { id: Number(id), text: box.querySelector("textarea").value }); loadQuestions(); }
+  catch (e) { const m = box.querySelector(".msg"); m.textContent = e.message; m.className = "msg err"; ev.target.disabled = false; }
+};
+
+function parseCSV(t, d) {
+  const rows = []; let r = [], c = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === d) { r.push(c); c = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && t[i + 1] === "\n") i++; r.push(c); c = ""; rows.push(r); r = []; }
+    else c += ch;
+  }
+  if (c || r.length) { r.push(c); rows.push(r); }
+  return rows.filter((x) => x.some((v) => v.trim()));
+}
+
+$("#csv").onchange = async (ev) => {
+  const f = ev.target.files[0]; if (!f) return;
+  try {
+    const text = (await f.text()).replace(/^\uFEFF/, "");
+    const d = text.split("\n")[0].includes(";") ? ";" : ",";   // Türkçe Excel noktalı virgül kullanır
+    const [head, ...rows] = parseCSV(text, d);
+    const h = head.map((x) => x.trim().toLowerCase());
+    const need = ["product_main_id", "info"].filter((k) => !h.includes(k));
+    if (need.length) throw new Error("Eksik sütun: " + need.join(", "));
+    const { data: { session } } = await sb.auth.getSession();
+    const recs = rows.map((r) => { const o = {}; h.forEach((k, i) => (o[k] = (r[i] ?? "").trim())); return o; })
+      .filter((o) => o.product_main_id && o.info)
+      .map((o) => ({ user_id: session.user.id, product_main_id: o.product_main_id, title: o.title || null, url: o.url || null, info: o.info }));
+    if (!recs.length) throw new Error("Geçerli satır bulunamadı");
+    for (let i = 0; i < recs.length; i += 200) {
+      const { error } = await sb.from("products").upsert(recs.slice(i, i + 200), { onConflict: "user_id,product_main_id" });
+      if (error) throw error;
+    }
+    say("#csv-msg", `${recs.length} ürün yüklendi.`, true); refresh();
+  } catch (e) { say("#csv-msg", e.message); }
+  ev.target.value = "";
+};
+
+sb.auth.onAuthStateChange(() => refresh());
+refresh();
+</script>
+</body>
+</html>
