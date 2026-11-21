@@ -137,6 +137,14 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
   </form>
 </div>
 
+<div class="gate" id="pending" hidden>
+  <div class="gate-card">
+    <h1>Onay bekleniyor</h1>
+    <p class="sub">Hesabın oluşturuldu. Yönetici onayladığında kullanmaya başlayabilirsin. Onaydan sonra "Tekrar kontrol et"e bas.</p>
+    <div class="row"><button class="btn" id="recheck" type="button">Tekrar kontrol et</button><button class="btn alt" id="logout3" type="button">Çıkış yap</button></div>
+  </div>
+</div>
+
 <div class="shell" id="app" hidden>
   <aside class="rail">
     <div class="brand">Soru Asistanı</div>
@@ -246,11 +254,14 @@ function showTab() {
 
 async function refresh() {
   const { data: { session } } = await sb.auth.getSession();
-  $("#auth").hidden = !!session; $("#app").hidden = !session;
+  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true;
   if (!session) return;
   $("#who").textContent = session.user.email;
   showTab();
   try { state.st = await api("status"); } catch (e) { state.st = null; toast(e.message, true); }
+  const waiting = !!state.st && state.st.approved === false;
+  $("#pending").hidden = !waiting; $("#app").hidden = waiting;
+  if (waiting) return;
   renderStatus();
   await Promise.all([loadProducts(), loadQuestions()]);
 }
@@ -431,7 +442,461 @@ $("#signup").onclick = async () => {
   const { error } = await sb.auth.signUp({ email: $("#email").value, password: $("#pass").value });
   $("#auth-msg").textContent = error ? error.message : "Kayıt oluşturuldu. E-postandaki doğrulama bağlantısına tıkla, sonra giriş yap.";
 };
-$("#logout").onclick = $("#logout2").onclick = async () => { await sb.auth.signOut(); };
+$("#logout").onclick = $("#logout2").onclick = $("#logout3").onclick = async () => { await sb.auth.signOut(); };
+$("#recheck").onclick = refresh;
+
+window.addEventListener("hashchange", showTab);
+sb.auth.onAuthStateChange(() => { setTimeout(refresh, 0); }); // callback içinde await etme: kilitlenir
+refresh();
+</script>
+</body>
+</html>
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Soru Asistanı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#16202b;--mute:#5c6a78;--line:#dce2e8;--accent:#1f4fe0;--accent-ink:#fff;--soft:#e8eefc;--ok:#16794c;--ok-bg:#e3f4ea;--warn:#9a5200;--warn-bg:#fdf0dc;--bad:#b3261e;--bad-bg:#fbe7e5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1419;--panel:#171e26;--ink:#e6ebf0;--mute:#93a1b0;--line:#27323d;--accent:#7a9dff;--accent-ink:#0b1220;--soft:#1c2740;--ok:#5fd49b;--ok-bg:#143124;--warn:#f0b35c;--warn-bg:#33270f;--bad:#ff8a80;--bad-bg:#3a1b19}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+h1,h2,h3,p{margin:0}
+button,input,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* giriş */
+.gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.gate-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px}
+.gate-card h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.gate-card .sub{color:var(--mute);margin:4px 0 20px}
+
+/* kabuk */
+.shell{display:grid;grid-template-columns:216px 1fr;min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:22px}
+.brand{font-weight:600;font-size:17px;letter-spacing:-.01em;padding:0 8px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;color:var(--mute);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--bg);color:var(--ink)}
+.nav a[aria-current=page]{background:var(--soft);color:var(--accent)}
+.badge{min-width:22px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:600;text-align:center;line-height:20px}
+.who{margin-top:auto;padding:0 8px;color:var(--mute);font-size:13px;word-break:break-all}
+.who button{margin-top:8px}
+main{padding:28px 32px 64px;max-width:1040px;width:100%}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.page-head h2{font-size:21px;font-weight:600;letter-spacing:-.01em}
+.page-head p{color:var(--mute);margin-top:2px}
+
+/* ortak */
+label{display:block;font-weight:500;margin:14px 0 5px}
+input[type=text],input[type=email],input[type=password],input[type=search],textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+textarea{min-height:104px;resize:vertical;line-height:1.5}
+.btn{padding:8px 15px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer}
+.btn.alt{background:transparent;color:var(--accent)}
+.btn.sm{padding:5px 11px;font-size:14px}
+.btn:disabled{opacity:.55;cursor:default}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:500;background:var(--bg);color:var(--mute);white-space:nowrap}
+.pill.ok,.pill.sent{background:var(--ok-bg);color:var(--ok)}
+.pill.warn,.pill.skipped{background:var(--warn-bg);color:var(--warn)}
+.pill.bad,.pill.failed{background:var(--bad-bg);color:var(--bad)}
+.pill.pending_review{background:var(--soft);color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card .hint{color:var(--mute);margin-top:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:32px 20px;text-align:center}
+.empty h3{font-size:16px;font-weight:600}
+.empty p{color:var(--mute);margin:6px auto 14px;max-width:46ch}
+code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
+.banner{background:var(--bad-bg);color:var(--bad);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500}
+
+/* sorular */
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;color:var(--mute);font-weight:500;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--soft);color:var(--accent)}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.qhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line)}
+.qhead .prod{font-weight:500;flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.qhead .when{color:var(--mute);font-size:13px}
+.qbody{display:grid;grid-template-columns:1fr 1.35fr}
+.ask{padding:16px 18px;border-right:1px solid var(--line)}
+.ask .cap,.reply .cap{color:var(--mute);font-size:13px;margin-bottom:4px}
+.qtext{font-size:16px;font-weight:500;overflow-wrap:anywhere}
+.reply{padding:16px 18px;background:var(--bg)}
+.reply textarea{background:var(--panel)}
+.rfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.count{color:var(--mute);font-size:13px}
+.note{margin-top:8px;color:var(--mute);font-size:14px;overflow-wrap:anywhere}
+.note.err{color:var(--bad)}
+.sent-text{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ürünler */
+.plist{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.prow{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;padding:12px 18px;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .t{font-weight:500;overflow-wrap:anywhere}
+.prow .i{grid-column:2;color:var(--mute);font-size:14px;overflow-wrap:anywhere}
+
+/* ayarlar */
+.switch{display:flex;gap:12px;align-items:flex-start;margin-top:14px;cursor:pointer}
+.switch input{appearance:none;flex:none;width:40px;height:23px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;margin:1px 0 0;transition:background .15s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(17px)}
+.switch span{display:block}
+.switch small{display:block;color:var(--mute);font-size:14px}
+
+.only-mobile{display:none}
+
+/* bildirim */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 16px;border-radius:10px;background:var(--ink);color:var(--bg);font-weight:500;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#toast.err{background:var(--bad);color:#fff}
+
+@media (max-width:820px){
+  .qbody{grid-template-columns:1fr}
+  .ask{border-right:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:fixed;inset:auto 0 0 0;height:auto;z-index:10;flex-direction:row;padding:6px 8px;border-right:0;border-top:1px solid var(--line);gap:0}
+  .brand,.who{display:none}
+  .only-mobile{display:block}
+  .nav{flex-direction:row;flex:1;justify-content:space-around}
+  .nav a{flex:1;justify-content:center;padding:10px 6px}
+  main{padding:20px 16px 96px}
+  .prow{grid-template-columns:1fr}.prow .i{grid-column:1}
+  #toast{bottom:84px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="auth">
+  <form class="gate-card" id="auth-form">
+    <h1>Soru Asistanı</h1>
+    <p class="sub">Trendyol müşteri sorularına hazır cevaplar. Hesabın yoksa aynı bilgilerle kayıt ol.</p>
+    <label for="email" style="margin-top:0">E-posta</label><input id="email" type="email" autocomplete="email" required>
+    <label for="pass">Parola</label><input id="pass" type="password" autocomplete="current-password" required>
+    <div class="row"><button class="btn" id="login" type="submit">Giriş yap</button><button class="btn alt" id="signup" type="button">Kayıt ol</button></div>
+    <p class="note" id="auth-msg" role="status"></p>
+  </form>
+</div>
+
+<div class="gate" id="pending" hidden>
+  <div class="gate-card">
+    <h1>Onay bekleniyor</h1>
+    <p class="sub">Hesabın oluşturuldu. Yönetici onayladığında kullanmaya başlayabilirsin. Onaydan sonra "Tekrar kontrol et"e bas.</p>
+    <div class="row"><button class="btn" id="recheck" type="button">Tekrar kontrol et</button><button class="btn alt" id="logout3" type="button">Çıkış yap</button></div>
+  </div>
+</div>
+
+<div class="shell" id="app" hidden>
+  <aside class="rail">
+    <div class="brand">Soru Asistanı</div>
+    <nav class="nav" aria-label="Bölümler">
+      <a href="#sorular" data-tab="sorular">Sorular <span class="badge" id="nav-badge" hidden>0</span></a>
+      <a href="#urunler" data-tab="urunler">Ürünler</a>
+      <a href="#ayarlar" data-tab="ayarlar">Ayarlar</a>
+    </nav>
+    <div class="who"><span id="who"></span><br><button class="btn alt sm" id="logout" type="button">Çıkış yap</button></div>
+  </aside>
+
+  <main>
+    <section id="tab-sorular">
+      <div class="page-head">
+        <div><h2>Sorular</h2><p>Taslak cevabı kontrol et, gerekirse düzelt ve gönder.</p></div>
+        <div class="row" style="margin:0"><span class="pill" id="conn-pill">Yükleniyor</span><button class="btn" id="check-now" type="button">Şimdi kontrol et</button></div>
+      </div>
+      <div class="banner" id="err-banner" hidden></div>
+      <div class="toolbar">
+        <div class="seg" id="filters" role="group" aria-label="Soru filtresi"></div>
+        <span class="count">Yeni sorular 15 dakikada bir otomatik çekilir.</span>
+      </div>
+      <div id="qlist"></div>
+    </section>
+
+    <section id="tab-urunler" hidden>
+      <div class="page-head"><div><h2>Ürünler</h2><p><span id="pcount">0</span> ürün kayıtlı. Asistan yalnızca burada yazan bilgiyle cevap verir.</p></div></div>
+      <div class="card">
+        <h3>CSV ile ürün yükle</h3>
+        <p class="hint">Sütunlar: <code>product_main_id</code> ve <code>info</code>. Aynı <code>product_main_id</code> tekrar yüklenirse güncellenir. Excel'den "CSV UTF-8" olarak kaydet.</p>
+        <div class="row"><input id="csv" type="file" accept=".csv,text/csv"></div>
+      </div>
+      <input id="psearch" type="search" placeholder="Ürün ara (kod veya bilgi)" aria-label="Ürün ara" style="margin-bottom:12px">
+      <div id="plist"></div>
+    </section>
+
+    <section id="tab-ayarlar" hidden>
+      <div class="page-head"><div><h2>Ayarlar</h2><p>Bağlantı bilgileri şifreli saklanır ve kaydedildikten sonra bir daha gösterilmez.</p></div></div>
+
+      <div class="card">
+        <h3>Trendyol bağlantısı <span class="pill" id="ty-pill">-</span></h3>
+        <p class="hint">Satıcı Paneli &gt; Hesap Bilgilerim &gt; Entegrasyon Bilgileri sayfasından alırsın. Güncellerken üç alanı da yeniden gir.</p>
+        <label for="sid">Satıcı ID</label><input id="sid" type="text" inputmode="numeric" autocomplete="off">
+        <label for="akey">API Key</label><input id="akey" type="password" autocomplete="off">
+        <label for="asec">API Secret</label><input id="asec" type="password" autocomplete="off">
+        <div class="row"><button class="btn" id="save-cred" type="button">Bağlantıyı kaydet</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Anthropic API anahtarı <span class="pill" id="ai-pill">-</span></h3>
+        <p class="hint">Anahtarı console.anthropic.com &gt; API Keys sayfasından alırsın. Cevap üretme ücreti senin Anthropic hesabından düşer. Önce Trendyol bağlantısını kaydet.</p>
+        <label for="claudekey">API anahtarı</label><input id="claudekey" type="password" autocomplete="off">
+        <div class="row"><button class="btn" id="save-claude" type="button">Anahtarı kaydet</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Gönderim</h3>
+        <label class="switch"><input type="checkbox" id="auto" role="switch"><span>Uygun cevapları onay beklemeden gönder<small>Kapalıyken her cevap senin onayını bekler. Açıkken kontrolden geçen cevaplar doğrudan müşteriye gider.</small></span></label>
+      </div>
+
+      <div class="only-mobile"><button class="btn alt" id="logout2" type="button">Çıkış yap</button></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// Bu iki değer herkese açık olabilir (güvenliği RLS ve giriş sağlar). service_role anahtarını ASLA buraya koyma.
+const SUPABASE_URL = "https://ychhefzfregkspjskpgh.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljaGhlZnpmcmVna3NwanNrcGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzkxNjYsImV4cCI6MjExMDg1NTE2Nn0.6y05vuq0DdWqMmiJ58whLeDheU7qf55_I1lqjzhdaEQ";
+
+const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const LABEL = { pending_review: "Onay bekliyor", sent: "Gönderildi", skipped: "Atlandı", failed: "Hata", new: "İşleniyor" };
+const TABS = ["sorular", "urunler", "ayarlar"];
+const state = { st: null, qs: [], products: [], filter: null };
+
+let toastTimer;
+function toast(msg, isErr) {
+  const t = $("#toast"); t.textContent = msg; t.className = isErr ? "err" : ""; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 5000);
+}
+
+async function api(action, extra = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/account`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, apikey: ANON_KEY },
+    body: JSON.stringify({ action, ...extra }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Hata ${r.status}`);
+  return j;
+}
+
+function showTab() {
+  const t = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "sorular";
+  TABS.forEach((n) => {
+    $("#tab-" + n).hidden = n !== t;
+    const a = document.querySelector(`[data-tab="${n}"]`);
+    if (n === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+}
+
+async function refresh() {
+  const { data: { session } } = await sb.auth.getSession();
+  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true;
+  if (!session) return;
+  $("#who").textContent = session.user.email;
+  showTab();
+  try { state.st = await api("status"); } catch (e) { state.st = null; toast(e.message, true); }
+  const waiting = !!state.st && state.st.approved === false;
+  $("#pending").hidden = !waiting; $("#app").hidden = waiting;
+  if (waiting) return;
+  renderStatus();
+  await Promise.all([loadProducts(), loadQuestions()]);
+}
+
+function renderStatus() {
+  const st = state.st, pill = $("#conn-pill");
+  const ok = st && st.connected && st.has_anthropic_key;
+  pill.textContent = !st || !st.connected ? "Bağlı değil" : !st.has_anthropic_key ? "Anthropic anahtarı eksik" : `Bağlı · satıcı ${st.seller_id}`;
+  pill.className = "pill " + (ok ? "ok" : "warn");
+  $("#ty-pill").textContent = st && st.connected ? `Bağlı · satıcı ${st.seller_id}` : "Bağlı değil";
+  $("#ty-pill").className = "pill " + (st && st.connected ? "ok" : "warn");
+  $("#ai-pill").textContent = st && st.has_anthropic_key ? "Kayıtlı" : "Eksik";
+  $("#ai-pill").className = "pill " + (st && st.has_anthropic_key ? "ok" : "warn");
+  $("#auto").checked = !!(st && st.auto_send);
+  const b = $("#err-banner");
+  b.hidden = !(st && st.last_error);
+  b.textContent = st && st.last_error ? `Son kontrolde hata: ${st.last_error}` : "";
+}
+
+// ---------- Sorular ----------
+async function loadQuestions() {
+  const { data, error } = await sb.from("questions").select("*").order("created_at", { ascending: false }).limit(100);
+  if (error) { toast(error.message, true); return; }
+  state.qs = data;
+  renderQuestions();
+}
+
+function fmtDate(s) { return s ? new Date(s).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""; }
+
+function renderQuestions() {
+  const qs = state.qs;
+  const n = (s) => qs.filter((q) => q.status === s).length;
+  const pending = n("pending_review");
+  if (state.filter === null) state.filter = pending > 0 ? "pending_review" : "all";
+  const nb = $("#nav-badge"); nb.textContent = pending; nb.hidden = pending === 0;
+  const defs = [["pending_review", `Onay bekleyen ${pending}`], ["sent", `Gönderilen ${n("sent")}`], ["skipped", `Atlanan ${n("skipped")}`], ["all", `Hepsi ${qs.length}`]];
+  $("#filters").innerHTML = defs.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${state.filter === k}">${l}</button>`).join("");
+
+  const box = $("#qlist");
+  if (!state.st || !state.st.connected || !state.st.has_anthropic_key) {
+    box.innerHTML = `<div class="empty"><h3>Kurulum tamamlanmadı</h3><p>Soruları çekebilmek için Trendyol bağlantısını ve Anthropic anahtarını kaydet.</p><a class="btn" href="#ayarlar" style="text-decoration:none;display:inline-block">Ayarlara git</a></div>`;
+    return;
+  }
+  if (!qs.length) {
+    box.innerHTML = `<div class="empty"><h3>Henüz soru yok</h3><p>Trendyol'dan gelen yeni sorular burada görünür. Beklemek istemezsen Şimdi kontrol et'e bas.</p></div>`;
+    return;
+  }
+  const list = state.filter === "all" ? qs : qs.filter((q) => q.status === state.filter);
+  if (!list.length) { box.innerHTML = `<div class="empty"><h3>Bu filtrede soru yok</h3><p>Başka bir filtre seç.</p></div>`; return; }
+  box.innerHTML = list.map(questionCard).join("");
+}
+
+function questionCard(q) {
+  const conf = q.confidence != null ? `<span class="pill">Güven %${Math.round(q.confidence * 100)}</span>` : "";
+  let reply;
+  if (q.status === "pending_review") {
+    reply = `<label class="cap" for="d${q.id}" style="margin:0 0 4px;font-weight:400">Taslak cevap</label><textarea id="d${q.id}" data-d="${q.id}">${esc(q.draft)}</textarea>
+      <div class="rfoot"><span class="count" data-c="${q.id}">${(q.draft || "").length} / 2000</span><button class="btn" type="button" data-send="${q.id}">Onayla ve gönder</button></div><p class="note err" data-m="${q.id}" hidden></p>`;
+  } else if (q.draft) {
+    reply = `<p class="cap">${q.status === "sent" ? "Gönderilen cevap" : "Taslak cevap"}</p><p class="sent-text">${esc(q.draft)}</p>${q.error ? `<p class="note err">${esc(q.error)}</p>` : ""}`;
+  } else {
+    reply = `<p class="cap">Cevap</p><p class="note err" style="margin:0">${esc(q.error || "Cevap üretilmedi.")}</p>`;
+  }
+  return `<article class="qcard"><div class="qhead"><span class="prod">${esc(q.product_name || q.product_main_id || "Ürün")}</span>${conf}<span class="when">${fmtDate(q.asked_at || q.created_at)}</span><span class="pill ${q.status}">${LABEL[q.status] || q.status}</span></div>
+    <div class="qbody"><div class="ask"><p class="cap">Müşteri sorusu</p><p class="qtext">${esc(q.question_text)}</p></div><div class="reply">${reply}</div></div></article>`;
+}
+
+$("#filters").onclick = (ev) => { const f = ev.target.dataset.f; if (f) { state.filter = f; renderQuestions(); } };
+
+$("#qlist").oninput = (ev) => {
+  const id = ev.target.dataset.d; if (!id) return;
+  const c = document.querySelector(`[data-c="${id}"]`); if (c) c.textContent = `${ev.target.value.length} / 2000`;
+};
+
+$("#qlist").onclick = async (ev) => {
+  const id = ev.target.dataset.send; if (!id) return;
+  const ta = document.querySelector(`[data-d="${id}"]`), msg = document.querySelector(`[data-m="${id}"]`);
+  ev.target.disabled = true; ev.target.textContent = "Gönderiliyor…"; msg.hidden = true;
+  try { await api("approve", { id: Number(id), text: ta.value }); toast("Cevap gönderildi."); await loadQuestions(); }
+  catch (e) { msg.textContent = e.message; msg.hidden = false; ev.target.disabled = false; ev.target.textContent = "Onayla ve gönder"; }
+};
+
+$("#check-now").onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true; b.textContent = "Kontrol ediliyor…";
+  try {
+    const r = await api("check_now");
+    toast(r.processed ? `${r.processed} yeni soru işlendi.` : "Yeni soru yok.");
+    state.st = await api("status"); renderStatus(); await loadQuestions();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false; b.textContent = "Şimdi kontrol et";
+};
+
+// ---------- Ürünler ----------
+async function loadProducts() {
+  const { data, error } = await sb.from("products").select("product_main_id,info").order("product_main_id").limit(500);
+  if (error) { toast(error.message, true); return; }
+  state.products = data; renderProducts();
+}
+
+function renderProducts() {
+  const all = state.products, q = $("#psearch").value.trim().toLowerCase();
+  $("#pcount").textContent = all.length;
+  const list = q ? all.filter((p) => [p.product_main_id, p.info].some((v) => String(v ?? "").toLowerCase().includes(q))) : all;
+  const box = $("#plist");
+  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>Yukarıdan bir CSV dosyası yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
+  if (!list.length) { box.innerHTML = `<div class="empty"><h3>Eşleşen ürün yok</h3><p>Aramayı değiştir.</p></div>`; return; }
+  box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span></div>`).join("")}</div>`;
+}
+$("#psearch").oninput = renderProducts;
+
+function parseCSV(t, d) {
+  const rows = []; let r = [], c = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === d) { r.push(c); c = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && t[i + 1] === "\n") i++; r.push(c); c = ""; rows.push(r); r = []; }
+    else c += ch;
+  }
+  if (c || r.length) { r.push(c); rows.push(r); }
+  return rows.filter((x) => x.some((v) => v.trim()));
+}
+
+$("#csv").onchange = async (ev) => {
+  const f = ev.target.files[0]; if (!f) return;
+  try {
+    let text = await f.text();
+    if (text.charCodeAt(0) === 65279) text = text.slice(1);
+    const d = text.split("\n")[0].includes(";") ? ";" : ",";   // Türkçe Excel noktalı virgül kullanır
+    const [head, ...rows] = parseCSV(text, d);
+    const h = head.map((x) => x.trim().toLowerCase());
+    const need = ["product_main_id", "info"].filter((k) => !h.includes(k));
+    if (need.length) throw new Error("Eksik sütun: " + need.join(", "));
+    const { data: { session } } = await sb.auth.getSession();
+    const recs = rows.map((r) => { const o = {}; h.forEach((k, i) => (o[k] = (r[i] ?? "").trim())); return o; })
+      .filter((o) => o.product_main_id && o.info)
+      .map((o) => ({ user_id: session.user.id, product_main_id: o.product_main_id, info: o.info }));
+    if (!recs.length) throw new Error("Geçerli satır bulunamadı");
+    for (let i = 0; i < recs.length; i += 200) {
+      const { error } = await sb.from("products").upsert(recs.slice(i, i + 200), { onConflict: "user_id,product_main_id" });
+      if (error) throw error;
+    }
+    toast(`${recs.length} ürün yüklendi.`); await loadProducts();
+  } catch (e) { toast(e.message, true); }
+  ev.target.value = "";
+};
+
+// ---------- Ayarlar ----------
+$("#save-cred").onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true; b.textContent = "Trendyol'da doğrulanıyor…";
+  try {
+    await api("save_credentials", { seller_id: $("#sid").value, api_key: $("#akey").value, api_secret: $("#asec").value });
+    $("#akey").value = ""; $("#asec").value = "";
+    toast("Trendyol bağlantısı doğrulandı ve kaydedildi."); await refresh();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false; b.textContent = "Bağlantıyı kaydet";
+};
+$("#save-claude").onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true; b.textContent = "Anthropic'te doğrulanıyor…";
+  try {
+    await api("save_anthropic_key", { api_key: $("#claudekey").value });
+    $("#claudekey").value = ""; toast("Anthropic anahtarı doğrulandı ve kaydedildi."); await refresh();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false; b.textContent = "Anahtarı kaydet";
+};
+$("#auto").onchange = (e) => api("set_auto_send", { value: e.target.checked })
+  .then(() => toast(e.target.checked ? "Otomatik gönderim açıldı." : "Otomatik gönderim kapatıldı."))
+  .catch((x) => { e.target.checked = !e.target.checked; toast(x.message, true); });
+
+// ---------- Giriş ----------
+$("#auth-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const { error } = await sb.auth.signInWithPassword({ email: $("#email").value, password: $("#pass").value });
+  if (error) $("#auth-msg").textContent = error.message;
+};
+$("#signup").onclick = async () => {
+  const { error } = await sb.auth.signUp({ email: $("#email").value, password: $("#pass").value });
+  $("#auth-msg").textContent = error ? error.message : "Kayıt oluşturuldu. E-postandaki doğrulama bağlantısına tıkla, sonra giriş yap.";
+};
+$("#logout").onclick = $("#logout2").onclick = $("#logout3").onclick = async () => { await sb.auth.signOut(); };
+$("#recheck").onclick = refresh;
 
 window.addEventListener("hashchange", showTab);
 sb.auth.onAuthStateChange(() => { setTimeout(refresh, 0); }); // callback içinde await etme: kilitlenir
