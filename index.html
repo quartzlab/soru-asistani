@@ -206,7 +206,7 @@ $("#csv").onchange = async (ev) => {
   ev.target.value = "";
 };
 
-sb.auth.onAuthStateChange(() => refresh());
+sb.auth.onAuthStateChange(() => { setTimeout(refresh, 0); }); // callback içinde await etme: kilitlenir
 refresh();
 </script>
 </body>
