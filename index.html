@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KwZxFRBWzryPCYXUYnVDZASEjHGt8U35+qD0DD7N4wo=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Asv6PjFMS3By/KgHc7ucJyd6/uZ/+vVLhDor+iW/Afc=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Soru Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -143,6 +143,8 @@ code{font-family:var(--mono);background:var(--chip);color:var(--mute);padding:1p
 .erow .ea{grid-column:1;color:var(--mute);font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap;padding-left:12px;border-left:2px solid var(--accent)}
 .erow .acts{grid-column:2;grid-row:1 / span 2;align-items:flex-start}
 #psearch{margin-bottom:12px}
+.qr{display:block;width:180px;height:180px;background:#fff;padding:10px;border-radius:12px;margin:10px 0}
+.code-input{font-family:var(--mono);font-size:22px!important;letter-spacing:.3em;text-align:center;max-width:220px}
 input[type=file]{color:var(--mute);font-size:14px;max-width:100%}
 input[type=file]::file-selector-button{margin-right:12px;padding:7px 14px;border-radius:9px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:inherit;font-weight:500;cursor:pointer}
 input[type=file]::file-selector-button:hover{border-color:var(--accent)}
@@ -197,6 +199,17 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     <label for="pass">Parola</label><input id="pass" type="password" autocomplete="current-password" required>
     <div class="row"><button class="btn" id="login" type="submit">Giriş yap</button><button class="btn alt" id="signup" type="button">Kayıt ol</button></div>
     <p class="note" id="auth-msg" role="status"></p>
+  </form>
+</div>
+
+<div class="gate" id="mfa" hidden>
+  <form class="gate-card" id="mfa-form">
+    <span class="mark" aria-hidden="true"></span>
+    <h1>Doğrulama kodu</h1>
+    <p class="sub">Doğrulayıcı uygulamadaki 6 haneli kodu gir.</p>
+    <label for="mfacode" class="sr">Doğrulama kodu</label><input id="mfacode" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+    <div class="row"><button class="btn" type="submit">Doğrula</button><button class="btn alt" id="logout4" type="button">Çıkış yap</button></div>
+    <p class="note err" id="mfa-msg" role="status"></p>
   </form>
 </div>
 
@@ -286,6 +299,20 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
       </div>
 
       <div class="card">
+        <h3>İki adımlı doğrulama <span class="pill" id="mfa-pill">-</span></h3>
+        <p class="hint">Açıkken girişte parolana ek olarak Google Authenticator gibi bir uygulamanın ürettiği 6 haneli kod istenir.</p>
+        <div class="row" id="mfa-off"><button class="btn" id="mfa-start" type="button">Etkinleştir</button></div>
+        <div id="mfa-setup" hidden>
+          <p class="note">Doğrulayıcı uygulamada bu QR kodu okut. Okutamıyorsan alttaki kodu elle gir.</p>
+          <img id="mfa-qr" class="qr" alt="İki adımlı doğrulama QR kodu">
+          <p class="note">Elle giriş kodu: <code id="mfa-secret"></code></p>
+          <label for="mfa-new">Uygulamadaki 6 haneli kod</label><input id="mfa-new" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          <div class="row"><button class="btn" id="mfa-confirm" type="button">Doğrula ve aç</button><button class="btn alt" id="mfa-cancel" type="button">Vazgeç</button></div>
+        </div>
+        <div class="row" id="mfa-on" hidden><button class="btn alt" id="mfa-disable" type="button">Kapat</button></div>
+      </div>
+
+      <div class="card">
         <h3>Kontrol sıklığı</h3>
         <p class="hint">Yeni soruların Trendyol'dan ne sıklıkla çekileceği. Sık kontrol cevabı hızlandırır ama Trendyol'a daha çok istek gönderir; çoğu mağaza için 5 dakika yeterlidir.</p>
         <label for="interval">Kontrol aralığı</label>
@@ -335,6 +362,7 @@ async function api(action, extra = {}) {
     body: JSON.stringify({ action, ...extra }),
   });
   const j = await r.json().catch(() => ({}));
+  if (j.mfa_required) setTimeout(refresh, 0);
   if (!r.ok) throw new Error(j.error || `Hata ${r.status}`);
   return j;
 }
@@ -350,8 +378,13 @@ function showTab() {
 
 async function refresh() {
   const { data: { session } } = await sb.auth.getSession();
-  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true;
+  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true; $("#mfa").hidden = true;
   if (!session) return;
+  const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+    $("#app").hidden = true; $("#mfa").hidden = false; $("#mfacode").focus();
+    return;
+  }
   $("#who").textContent = session.user.email;
   showTab();
   try { state.st = await api("status"); } catch (e) { state.st = null; toast(e.message, true); }
@@ -359,7 +392,7 @@ async function refresh() {
   $("#pending").hidden = !waiting; $("#app").hidden = waiting;
   if (waiting) return;
   renderStatus();
-  await Promise.all([loadProducts(), loadQuestions(), loadExamples()]);
+  await Promise.all([loadProducts(), loadQuestions(), loadExamples(), renderMfa()]);
 }
 
 function renderStatus() {
@@ -674,6 +707,71 @@ $("#auto").onchange = (e) => api("set_auto_send", { value: e.target.checked })
   .then(() => toast(e.target.checked ? "Otomatik gönderim açıldı." : "Otomatik gönderim kapatıldı."))
   .catch((x) => { e.target.checked = !e.target.checked; toast(x.message, true); });
 
+// ---------- İki adımlı doğrulama ----------
+let mfaPending = null;
+async function renderMfa() {
+  const { data } = await sb.auth.mfa.listFactors();
+  const on = !!(data && data.totp && data.totp.length);
+  $("#mfa-pill").textContent = on ? "Açık" : "Kapalı";
+  $("#mfa-pill").className = "pill " + (on ? "ok" : "warn");
+  $("#mfa-on").hidden = !on; $("#mfa-off").hidden = on || !!mfaPending; $("#mfa-setup").hidden = !mfaPending;
+}
+async function dropUnverified() {
+  const { data } = await sb.auth.mfa.listFactors();
+  for (const f of (data && data.all) || []) if (f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
+}
+$("#mfa-start").onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true;
+  try {
+    await dropUnverified();
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "Soru Asistanı " + Date.now() });
+    if (error) throw error;
+    mfaPending = data.id;
+    $("#mfa-qr").src = data.totp.qr_code; $("#mfa-secret").textContent = data.totp.secret; $("#mfa-new").value = "";
+    await renderMfa(); $("#mfa-new").focus();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false;
+};
+$("#mfa-cancel").onclick = async () => {
+  mfaPending = null; $("#mfa-qr").removeAttribute("src"); $("#mfa-secret").textContent = "";
+  await dropUnverified().catch(() => {}); await renderMfa();
+};
+$("#mfa-confirm").onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true;
+  try {
+    const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: mfaPending, code: $("#mfa-new").value.replace(/\s/g, "") });
+    if (error) throw new Error("Kod doğrulanamadı. Uygulamadaki güncel kodu gir.");
+    mfaPending = null; $("#mfa-qr").removeAttribute("src"); $("#mfa-secret").textContent = "";
+    toast("İki adımlı doğrulama açıldı."); await renderMfa();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false;
+};
+$("#mfa-disable").onclick = async (ev) => {
+  const b = ev.currentTarget;
+  if (b.dataset.armed !== "1") {
+    b.dataset.armed = "1"; b.textContent = "Emin misin? Tekrar bas";
+    setTimeout(() => { b.dataset.armed = ""; b.textContent = "Kapat"; }, 4000);
+    return;
+  }
+  try {
+    const { data } = await sb.auth.mfa.listFactors();
+    for (const f of (data && data.totp) || []) { const { error } = await sb.auth.mfa.unenroll({ factorId: f.id }); if (error) throw error; }
+    toast("İki adımlı doğrulama kapatıldı."); await renderMfa();
+  } catch (e) { toast(e.message, true); }
+};
+$("#mfa-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const msg = $("#mfa-msg"); msg.textContent = "";
+  try {
+    const { data } = await sb.auth.mfa.listFactors();
+    const f = data && data.totp && data.totp[0];
+    if (!f) throw new Error();
+    const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: f.id, code: $("#mfacode").value.replace(/\s/g, "") });
+    if (error) throw error;
+    $("#mfacode").value = ""; await refresh();
+  } catch (e) { msg.textContent = "Kod doğrulanamadı. Uygulamadaki güncel kodu gir."; $("#mfacode").select(); }
+};
+
 // ---------- Giriş ----------
 $("#auth-form").onsubmit = async (ev) => {
   ev.preventDefault();
@@ -684,7 +782,7 @@ $("#signup").onclick = async () => {
   const { error } = await sb.auth.signUp({ email: $("#email").value, password: $("#pass").value });
   $("#auth-msg").textContent = error ? error.message : "Kayıt oluşturuldu. E-postandaki doğrulama bağlantısına tıkla, sonra giriş yap.";
 };
-$("#logout").onclick = $("#logout2").onclick = $("#logout3").onclick = async () => { await sb.auth.signOut(); };
+$("#logout").onclick = $("#logout2").onclick = $("#logout3").onclick = $("#logout4").onclick = async () => { await sb.auth.signOut(); };
 $("#recheck").onclick = refresh;
 
 window.addEventListener("hashchange", showTab);
