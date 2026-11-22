@@ -14,7 +14,7 @@
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif}
 h1,h2,h3,p{margin:0}
-button,input,textarea{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 [hidden]{display:none!important}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -42,7 +42,7 @@ main{padding:28px 32px 64px;max-width:1040px;width:100%}
 
 /* ortak */
 label{display:block;font-weight:500;margin:14px 0 5px}
-input[type=text],input[type=email],input[type=password],input[type=search],textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+input[type=text],input[type=email],input[type=password],input[type=search],textarea,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 textarea{min-height:104px;resize:vertical;line-height:1.5}
 .btn{padding:8px 15px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer}
 .btn.alt{background:transparent;color:var(--accent)}
@@ -86,7 +86,10 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
 
 /* ürünler */
 .plist{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.prow{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;padding:12px 18px;border-top:1px solid var(--line)}
+.prow{display:grid;grid-template-columns:150px 1fr auto;gap:4px 16px;padding:12px 18px;border-top:1px solid var(--line)}
+.prow .acts{grid-column:3;grid-row:1 / span 2;display:flex;gap:6px;align-items:flex-start}
+.qhead code{margin-left:6px}
+select{max-width:280px}
 .prow:first-child{border-top:0}
 .prow .t{font-weight:500;overflow-wrap:anywhere}
 .prow .i{grid-column:2;color:var(--mute);font-size:14px;overflow-wrap:anywhere}
@@ -118,7 +121,7 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
   .nav{flex-direction:row;flex:1;justify-content:space-around}
   .nav a{flex:1;justify-content:center;padding:10px 6px}
   main{padding:20px 16px 96px}
-  .prow{grid-template-columns:1fr}.prow .i{grid-column:1}
+  .prow{grid-template-columns:1fr}.prow .i,.prow .acts{grid-column:1;grid-row:auto}
   #toast{bottom:84px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -165,13 +168,21 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
       <div class="banner" id="err-banner" hidden></div>
       <div class="toolbar">
         <div class="seg" id="filters" role="group" aria-label="Soru filtresi"></div>
-        <span class="count">Yeni sorular 15 dakikada bir otomatik çekilir.</span>
+        <span class="count" id="interval-note"></span>
       </div>
       <div id="qlist"></div>
     </section>
 
     <section id="tab-urunler" hidden>
       <div class="page-head"><div><h2>Ürünler</h2><p><span id="pcount">0</span> ürün kayıtlı. Asistan yalnızca burada yazan bilgiyle cevap verir.</p></div></div>
+      <div class="card">
+        <h3>Elle ürün ekle</h3>
+        <p class="hint">Ürün kodu Trendyol'daki <code>product_main_id</code> (Model Kodu) ile birebir aynı olmalı. Var olan bir kodu girersen bilgisi güncellenir.</p>
+        <label for="pid">Ürün kodu</label><input id="pid" type="text" autocomplete="off">
+        <label for="pinfo">Ürün bilgisi</label><textarea id="pinfo" maxlength="20000"></textarea>
+        <div class="row"><button class="btn" id="psave" type="button">Ürünü kaydet</button><button class="btn alt" id="pclear" type="button">Temizle</button></div>
+      </div>
+
       <div class="card">
         <h3>CSV ile ürün yükle</h3>
         <p class="hint">Sütunlar: <code>product_main_id</code> ve <code>info</code>. Aynı <code>product_main_id</code> tekrar yüklenirse güncellenir. Excel'den "CSV UTF-8" olarak kaydet.</p>
@@ -198,6 +209,13 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
         <p class="hint">Anahtarı console.anthropic.com &gt; API Keys sayfasından alırsın. Cevap üretme ücreti senin Anthropic hesabından düşer. Önce Trendyol bağlantısını kaydet.</p>
         <label for="claudekey">API anahtarı</label><input id="claudekey" type="password" autocomplete="off">
         <div class="row"><button class="btn" id="save-claude" type="button">Anahtarı kaydet</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Kontrol sıklığı</h3>
+        <p class="hint">Yeni soruların Trendyol'dan ne sıklıkla çekileceği. Sık kontrol cevabı hızlandırır ama Trendyol'a daha çok istek gönderir; çoğu mağaza için 5 dakika yeterlidir.</p>
+        <label for="interval">Kontrol aralığı</label>
+        <select id="interval"><option value="1">1 dakikada bir</option><option value="5">5 dakikada bir</option><option value="15">15 dakikada bir</option><option value="30">30 dakikada bir</option><option value="60">Saatte bir</option></select>
       </div>
 
       <div class="card">
@@ -276,6 +294,9 @@ function renderStatus() {
   $("#ai-pill").textContent = st && st.has_anthropic_key ? "Kayıtlı" : "Eksik";
   $("#ai-pill").className = "pill " + (st && st.has_anthropic_key ? "ok" : "warn");
   $("#auto").checked = !!(st && st.auto_send);
+  const iv = (st && st.check_interval_min) || 15;
+  $("#interval").value = String(iv);
+  $("#interval-note").textContent = `Yeni sorular ${iv === 60 ? "saatte bir" : iv + " dakikada bir"} otomatik çekilir.`;
   const b = $("#err-banner");
   b.hidden = !(st && st.last_error);
   b.textContent = st && st.last_error ? `Son kontrolde hata: ${st.last_error}` : "";
@@ -314,6 +335,18 @@ function renderQuestions() {
   box.innerHTML = list.map(questionCard).join("");
 }
 
+function skipHelp(q) {
+  if (q.status !== "skipped" && q.status !== "failed") return "";
+  const missing = (q.error || "").includes("Ürün bilgisi bulunamadı");
+  const has = state.products.some((p) => p.product_main_id === q.product_main_id);
+  let why = "";
+  if (missing) why = !q.product_main_id ? "Trendyol bu soruya ürün kodu göndermedi, eşleştirilemedi."
+    : has ? `<code>${esc(q.product_main_id)}</code> artık Ürünler listesinde. Yeniden dene'ye basınca cevap hazırlanır.`
+    : `<code>${esc(q.product_main_id)}</code> kodlu ürün Ürünler listesinde yok. Ekleyip yeniden dene.`;
+  const add = missing && q.product_main_id && !has ? `<button class="btn alt sm" type="button" data-addp="${esc(q.product_main_id)}">Ürünü ekle</button>` : "";
+  return `${why ? `<p class="note">${why}</p>` : ""}<div class="row" style="margin-top:10px">${add}<button class="btn sm" type="button" data-retry="${q.id}">Yeniden dene</button></div>`;
+}
+
 function questionCard(q) {
   const conf = q.confidence != null ? `<span class="pill">Güven %${Math.round(q.confidence * 100)}</span>` : "";
   let reply;
@@ -321,11 +354,11 @@ function questionCard(q) {
     reply = `<label class="cap" for="d${q.id}" style="margin:0 0 4px;font-weight:400">Taslak cevap</label><textarea id="d${q.id}" data-d="${q.id}">${esc(q.draft)}</textarea>
       <div class="rfoot"><span class="count" data-c="${q.id}">${(q.draft || "").length} / 2000</span><button class="btn" type="button" data-send="${q.id}">Onayla ve gönder</button></div><p class="note err" data-m="${q.id}" hidden></p>`;
   } else if (q.draft) {
-    reply = `<p class="cap">${q.status === "sent" ? "Gönderilen cevap" : "Taslak cevap"}</p><p class="sent-text">${esc(q.draft)}</p>${q.error ? `<p class="note err">${esc(q.error)}</p>` : ""}`;
+    reply = `<p class="cap">${q.status === "sent" ? "Gönderilen cevap" : "Taslak cevap"}</p><p class="sent-text">${esc(q.draft)}</p>${q.error ? `<p class="note err">${esc(q.error)}</p>` : ""}${skipHelp(q)}`;
   } else {
-    reply = `<p class="cap">Cevap</p><p class="note err" style="margin:0">${esc(q.error || "Cevap üretilmedi.")}</p>`;
+    reply = `<p class="cap">Cevap</p><p class="note err" style="margin:0">${esc(q.error || "Cevap üretilmedi.")}</p>${skipHelp(q)}`;
   }
-  return `<article class="qcard"><div class="qhead"><span class="prod">${esc(q.product_name || q.product_main_id || "Ürün")}</span>${conf}<span class="when">${fmtDate(q.asked_at || q.created_at)}</span><span class="pill ${q.status}">${LABEL[q.status] || q.status}</span></div>
+  return `<article class="qcard"><div class="qhead"><span class="prod">${esc(q.product_name || "Ürün")}${q.product_main_id ? ` <code>${esc(q.product_main_id)}</code>` : ""}</span>${conf}<span class="when">${fmtDate(q.asked_at || q.created_at)}</span><span class="pill ${q.status}">${LABEL[q.status] || q.status}</span></div>
     <div class="qbody"><div class="ask"><p class="cap">Müşteri sorusu</p><p class="qtext">${esc(q.question_text)}</p></div><div class="reply">${reply}</div></div></article>`;
 }
 
@@ -337,7 +370,24 @@ $("#qlist").oninput = (ev) => {
 };
 
 $("#qlist").onclick = async (ev) => {
-  const id = ev.target.dataset.send; if (!id) return;
+  const t = ev.target;
+  if (t.dataset.addp) {
+    location.hash = "#urunler"; showTab();
+    $("#pid").value = t.dataset.addp; $("#pinfo").value = "";
+    $("#pid").scrollIntoView({ block: "center" }); $("#pinfo").focus();
+    return;
+  }
+  if (t.dataset.retry) {
+    t.disabled = true; t.textContent = "Deneniyor…";
+    try {
+      await api("retry", { id: Number(t.dataset.retry) });
+      try { const r = await api("check_now"); toast(r.processed ? "Soru yeniden işlendi." : "Soru yeniden kontrol edildi."); }
+      catch (e) { toast(`Soru kuyruğa alındı (${e.message}). Sonraki kontrolde işlenecek.`, true); }
+      state.st = await api("status"); renderStatus(); await loadQuestions();
+    } catch (e) { toast(e.message, true); t.disabled = false; t.textContent = "Yeniden dene"; }
+    return;
+  }
+  const id = t.dataset.send; if (!id) return;
   const ta = document.querySelector(`[data-d="${id}"]`), msg = document.querySelector(`[data-m="${id}"]`);
   ev.target.disabled = true; ev.target.textContent = "Gönderiliyor…"; msg.hidden = true;
   try { await api("approve", { id: Number(id), text: ta.value }); toast("Cevap gönderildi."); await loadQuestions(); }
@@ -366,11 +416,48 @@ function renderProducts() {
   $("#pcount").textContent = all.length;
   const list = q ? all.filter((p) => [p.product_main_id, p.info].some((v) => String(v ?? "").toLowerCase().includes(q))) : all;
   const box = $("#plist");
-  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>Yukarıdan bir CSV dosyası yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
+  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>Yukarıdaki formdan elle ekle ya da CSV yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
   if (!list.length) { box.innerHTML = `<div class="empty"><h3>Eşleşen ürün yok</h3><p>Aramayı değiştir.</p></div>`; return; }
-  box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span></div>`).join("")}</div>`;
+  box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span><span class="acts"><button class="btn alt sm" type="button" data-edit="${esc(p.product_main_id)}">Düzenle</button><button class="btn alt sm" type="button" data-del="${esc(p.product_main_id)}">Sil</button></span></div>`).join("")}</div>`;
 }
 $("#psearch").oninput = renderProducts;
+
+$("#plist").onclick = async (ev) => {
+  const t = ev.target;
+  if (t.dataset.edit) {
+    const p = state.products.find((x) => x.product_main_id === t.dataset.edit); if (!p) return;
+    $("#pid").value = p.product_main_id; $("#pinfo").value = p.info;
+    $("#pid").scrollIntoView({ block: "center" }); $("#pinfo").focus();
+    return;
+  }
+  if (t.dataset.del) {
+    if (t.dataset.armed !== "1") {
+      t.dataset.armed = "1"; t.textContent = "Emin misin?";
+      setTimeout(() => { t.dataset.armed = ""; t.textContent = "Sil"; }, 4000);
+      return;
+    }
+    const { error } = await sb.from("products").delete().eq("product_main_id", t.dataset.del);
+    if (error) { toast(error.message, true); return; }
+    toast("Ürün silindi."); await loadProducts(); renderQuestions();
+  }
+};
+
+$("#pclear").onclick = () => { $("#pid").value = ""; $("#pinfo").value = ""; };
+$("#psave").onclick = async (ev) => {
+  const id = $("#pid").value.trim(), info = $("#pinfo").value.trim();
+  if (!id || !info) { toast("Ürün kodu ve ürün bilgisi boş olamaz.", true); return; }
+  const b = ev.currentTarget; b.disabled = true;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const had = state.products.some((p) => p.product_main_id === id);
+    const { error } = await sb.from("products").upsert({ user_id: session.user.id, product_main_id: id, info }, { onConflict: "user_id,product_main_id" });
+    if (error) throw error;
+    toast(had ? "Ürün güncellendi." : "Ürün eklendi.");
+    $("#pid").value = ""; $("#pinfo").value = "";
+    await loadProducts(); renderQuestions();
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false;
+};
 
 function parseCSV(t, d) {
   const rows = []; let r = [], c = "", q = false;
@@ -427,6 +514,12 @@ $("#save-claude").onclick = async (ev) => {
     $("#claudekey").value = ""; toast("Anthropic anahtarı doğrulandı ve kaydedildi."); await refresh();
   } catch (e) { toast(e.message, true); }
   b.disabled = false; b.textContent = "Anahtarı kaydet";
+};
+$("#interval").onchange = (e) => {
+  const v = Number(e.target.value);
+  api("set_interval", { value: v })
+    .then(() => { state.st.check_interval_min = v; renderStatus(); toast("Kontrol sıklığı kaydedildi."); })
+    .catch((x) => { toast(x.message, true); renderStatus(); });
 };
 $("#auto").onchange = (e) => api("set_auto_send", { value: e.target.checked })
   .then(() => toast(e.target.checked ? "Otomatik gönderim açıldı." : "Otomatik gönderim kapatıldı."))
