@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Asv6PjFMS3By/KgHc7ucJyd6/uZ/+vVLhDor+iW/Afc=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Z5C6xnO1Fj098TkP5W7hKLReq8dkvgG7ESGwhozmldE=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Soru Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,6 +44,20 @@ button,input,textarea,select{font:inherit;color:inherit}
 .nav a span:first-of-type{flex:1}
 .nav a:hover{background:var(--sunk);color:var(--ink)}
 .nav a[aria-current=page]{background:var(--soft);color:var(--accent)}
+.nav a.parent-active{color:var(--ink)}
+.navgroup{position:relative}
+.navgroup > a{padding-right:40px}
+.navtoggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--mute);display:grid;place-items:center;cursor:pointer}
+.navtoggle:hover{background:var(--chip);color:var(--ink)}
+.navtoggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.navtoggle[aria-expanded=false] svg{transform:rotate(-90deg)}
+.subnav{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 19px;padding-left:10px;border-left:1px solid var(--line)}
+.subnav a{padding:7px 10px;font-size:14px}
+.subnav a svg{width:16px;height:16px}
+.crumb{display:inline-block;margin-bottom:4px;color:var(--mute);text-decoration:none;font-size:14px;font-weight:500}
+.crumb::after{content:" /";color:var(--faint)}
+.crumb:hover{color:var(--accent)}
+.only-mobile-inline{display:none}
 .badge{min-width:22px;padding:0 7px;border-radius:999px;background:var(--warn);color:var(--panel);font-size:12px;font-weight:600;text-align:center;line-height:20px}
 .who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);color:var(--mute);font-size:13px;word-break:break-all}
 .who button{margin-top:10px}
@@ -86,13 +100,16 @@ code{font-family:var(--mono);background:var(--chip);color:var(--mute);padding:1p
 .count{color:var(--faint);font-size:13px}
 .note{margin-top:8px;color:var(--mute);font-size:14px;overflow-wrap:anywhere}
 .note.err{color:var(--bad)}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
-.sgrid .card{margin:0}
+.sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.sgrid .card{margin:0;display:flex;flex-direction:column}
+.sgrid .card > .row:last-child{margin-top:auto;padding-top:18px}
+.sgrid .wide{grid-column:1 / -1}
+@media (max-width:980px){.sgrid{grid-template-columns:1fr}.sgrid .wide{grid-column:auto}}
 
 /* sorular: konuşma akışı */
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--line)}
-.seg{display:flex;gap:4px;flex-wrap:wrap}
-.seg button{border:0;background:transparent;padding:10px 12px 11px;color:var(--mute);font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px}
+.seg{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.seg button{border:0;background:transparent;padding:10px 12px 11px;color:var(--mute);font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex:none}
 .seg button:hover{color:var(--ink)}
 .seg button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--accent)}
 .seg .n{min-width:20px;padding:0 6px;border-radius:999px;background:var(--chip);color:var(--mute);font-size:12px;line-height:19px;text-align:center}
@@ -172,6 +189,11 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
   .nav{flex-direction:row;flex:1;justify-content:space-around;gap:0}
   .nav a{flex:1;flex-direction:column;gap:3px;padding:7px 4px;font-size:12px;position:relative}
   .nav a span:first-of-type{flex:none}
+  .navtoggle,.subnav{display:none!important}
+  .navgroup{flex:1;display:flex}
+  .navgroup > a{padding-right:4px}
+  .nav a.parent-active{background:var(--soft);color:var(--accent)}
+  .only-mobile-inline{display:inline-flex}
   .nav a .badge{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;line-height:17px;font-size:11px;padding:0 5px}
   main{padding:22px 16px 104px}
   .page-head h2{font-size:24px}
@@ -226,9 +248,14 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
   <aside class="rail">
     <div class="brand"><span class="mark" aria-hidden="true"></span>Soru Asistanı</div>
     <nav class="nav" aria-label="Bölümler">
-      <a href="#sorular" data-tab="sorular"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/></svg><span>Sorular</span><span class="badge" id="nav-badge" hidden>0</span></a>
+      <div class="navgroup">
+        <a href="#sorular" data-tab="sorular"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/></svg><span>Sorular</span><span class="badge" id="nav-badge" hidden>0</span></a>
+        <button class="navtoggle" id="navtoggle" type="button" aria-expanded="true" aria-controls="subnav" aria-label="Sorular alt menüsünü aç/kapat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
+      <div class="subnav" id="subnav">
+        <a href="#ornekler" data-tab="ornekler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10M7 11h10M7 15h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span>Örnekler</span></a>
+      </div>
       <a href="#urunler" data-tab="urunler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg><span>Ürünler</span></a>
-      <a href="#ornekler" data-tab="ornekler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10M7 11h10M7 15h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span>Örnekler</span></a>
       <a href="#ayarlar" data-tab="ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Ayarlar</span></a>
     </nav>
     <div class="who"><span id="who"></span><br><button class="btn alt sm" id="logout" type="button">Çıkış yap</button></div>
@@ -238,7 +265,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     <section id="tab-sorular">
       <div class="page-head">
         <div><h2>Sorular</h2><p>Taslak cevabı kontrol et, gerekirse düzelt ve gönder.</p></div>
-        <div class="head-actions"><span class="conn" id="conn-pill">Yükleniyor</span><button class="btn" id="check-now" type="button">Şimdi kontrol et</button></div>
+        <div class="head-actions"><span class="conn" id="conn-pill">Yükleniyor</span><a class="btn alt only-mobile-inline" href="#ornekler">Örnekler</a><button class="btn" id="check-now" type="button">Şimdi kontrol et</button></div>
       </div>
       <div class="banner" id="err-banner" hidden></div>
       <div class="toolbar">
@@ -268,7 +295,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     </section>
 
     <section id="tab-ornekler" hidden>
-      <div class="page-head"><div><h2>Örnekler</h2><p>Asistan cevap yazarken bu örnek soru ve cevaplara bakıp üslubunu taklit eder. En yeni 6 örnek kullanılır.</p></div><button class="btn" id="eadd" type="button">Örnek ekle</button></div>
+      <div class="page-head"><div><a class="crumb" href="#sorular">Sorular</a><h2>Örnekler</h2><p>Asistan cevap yazarken bu örnek soru ve cevaplara bakıp üslubunu taklit eder. En yeni 6 örnek kullanılır.</p></div><button class="btn" id="eadd" type="button">Örnek ekle</button></div>
       <div class="card" id="eform" hidden>
         <h3 id="eform-title">Yeni örnek</h3>
         <label for="eq">Müşteri sorusu</label><textarea id="eq" maxlength="1000"></textarea>
@@ -285,31 +312,17 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
       <div class="card">
         <h3>Trendyol bağlantısı <span class="pill" id="ty-pill">-</span></h3>
         <p class="hint">Satıcı Paneli &gt; Hesap Bilgilerim &gt; Entegrasyon Bilgileri sayfasından alırsın. Güncellerken üç alanı da yeniden gir.</p>
-        <label for="sid">Satıcı ID</label><input id="sid" type="text" inputmode="numeric" autocomplete="off">
-        <label for="akey">API Key</label><input id="akey" type="password" autocomplete="off">
-        <label for="asec">API Secret</label><input id="asec" type="password" autocomplete="off">
+        <label for="sid">Satıcı ID</label><input id="sid" name="ty-seller-id" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-1p-ignore data-lpignore="true">
+        <label for="akey">API Key</label><input id="akey" name="ty-api-key" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
+        <label for="asec">API Secret</label><input id="asec" name="ty-api-secret" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
         <div class="row"><button class="btn" id="save-cred" type="button">Bağlantıyı kaydet</button></div>
       </div>
 
       <div class="card">
         <h3>Anthropic API anahtarı <span class="pill" id="ai-pill">-</span></h3>
         <p class="hint">Anahtarı console.anthropic.com &gt; API Keys sayfasından alırsın. Cevap üretme ücreti senin Anthropic hesabından düşer. Önce Trendyol bağlantısını kaydet.</p>
-        <label for="claudekey">API anahtarı</label><input id="claudekey" type="password" autocomplete="off">
+        <label for="claudekey">API anahtarı</label><input id="claudekey" name="anthropic-key" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
         <div class="row"><button class="btn" id="save-claude" type="button">Anahtarı kaydet</button></div>
-      </div>
-
-      <div class="card">
-        <h3>İki adımlı doğrulama <span class="pill" id="mfa-pill">-</span></h3>
-        <p class="hint">Açıkken girişte parolana ek olarak Google Authenticator gibi bir uygulamanın ürettiği 6 haneli kod istenir.</p>
-        <div class="row" id="mfa-off"><button class="btn" id="mfa-start" type="button">Etkinleştir</button></div>
-        <div id="mfa-setup" hidden>
-          <p class="note">Doğrulayıcı uygulamada bu QR kodu okut. Okutamıyorsan alttaki kodu elle gir.</p>
-          <img id="mfa-qr" class="qr" alt="İki adımlı doğrulama QR kodu">
-          <p class="note">Elle giriş kodu: <code id="mfa-secret"></code></p>
-          <label for="mfa-new">Uygulamadaki 6 haneli kod</label><input id="mfa-new" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
-          <div class="row"><button class="btn" id="mfa-confirm" type="button">Doğrula ve aç</button><button class="btn alt" id="mfa-cancel" type="button">Vazgeç</button></div>
-        </div>
-        <div class="row" id="mfa-on" hidden><button class="btn alt" id="mfa-disable" type="button">Kapat</button></div>
       </div>
 
       <div class="card">
@@ -322,6 +335,20 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
       <div class="card">
         <h3>Gönderim</h3>
         <label class="switch"><input type="checkbox" id="auto" role="switch"><span>Uygun cevapları onay beklemeden gönder<small>Kapalıyken her cevap senin onayını bekler. Açıkken kontrolden geçen cevaplar doğrudan müşteriye gider.</small></span></label>
+      </div>
+
+      <div class="card wide">
+        <h3>İki adımlı doğrulama <span class="pill" id="mfa-pill">-</span></h3>
+        <p class="hint">Açıkken girişte parolana ek olarak Google Authenticator gibi bir uygulamanın ürettiği 6 haneli kod istenir.</p>
+        <div class="row" id="mfa-off"><button class="btn" id="mfa-start" type="button">Etkinleştir</button></div>
+        <div id="mfa-setup" hidden>
+          <p class="note">Doğrulayıcı uygulamada bu QR kodu okut. Okutamıyorsan alttaki kodu elle gir.</p>
+          <img id="mfa-qr" class="qr" alt="İki adımlı doğrulama QR kodu">
+          <p class="note">Elle giriş kodu: <code id="mfa-secret"></code></p>
+          <label for="mfa-new">Uygulamadaki 6 haneli kod</label><input id="mfa-new" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          <div class="row"><button class="btn" id="mfa-confirm" type="button">Doğrula ve aç</button><button class="btn alt" id="mfa-cancel" type="button">Vazgeç</button></div>
+        </div>
+        <div class="row" id="mfa-on" hidden><button class="btn alt" id="mfa-disable" type="button">Kapat</button></div>
       </div>
       </div>
 
@@ -374,7 +401,16 @@ function showTab() {
     const a = document.querySelector(`[data-tab="${n}"]`);
     if (n === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
+  $('[data-tab="sorular"]').classList.toggle("parent-active", t === "ornekler");
+  if (t === "ornekler" && $("#subnav").hidden) setNav(true);
 }
+
+function setNav(open) {
+  $("#navtoggle").setAttribute("aria-expanded", String(open)); $("#subnav").hidden = !open;
+  try { localStorage.setItem("subnav", open ? "1" : "0"); } catch {}
+}
+$("#navtoggle").onclick = () => setNav($("#navtoggle").getAttribute("aria-expanded") !== "true");
+{ let open = true; try { open = localStorage.getItem("subnav") !== "0"; } catch {} setNav(open); }
 
 async function refresh() {
   const { data: { session } } = await sb.auth.getSession();
@@ -681,6 +717,8 @@ $("#elist").onclick = async (ev) => {
 
 // ---------- Ayarlar ----------
 $("#save-cred").onclick = async (ev) => {
+  // Tarayıcı otomatik doldurması e-posta/parola yazmış olabilir: göndermeden önce kontrol et
+  if (!/^\d{1,15}$/.test($("#sid").value.trim())) { toast("Satıcı ID yalnızca rakamlardan oluşur. Alanları kontrol et.", true); return; }
   const b = ev.currentTarget; b.disabled = true; b.textContent = "Trendyol'da doğrulanıyor…";
   try {
     await api("save_credentials", { seller_id: $("#sid").value, api_key: $("#akey").value, api_secret: $("#asec").value });
