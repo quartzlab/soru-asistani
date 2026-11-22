@@ -174,13 +174,13 @@ select{max-width:280px}
     </section>
 
     <section id="tab-urunler" hidden>
-      <div class="page-head"><div><h2>Ürünler</h2><p><span id="pcount">0</span> ürün kayıtlı. Asistan yalnızca burada yazan bilgiyle cevap verir.</p></div></div>
-      <div class="card">
-        <h3>Elle ürün ekle</h3>
+      <div class="page-head"><div><h2>Ürünler</h2><p><span id="pcount">0</span> ürün kayıtlı. Asistan yalnızca burada yazan bilgiyle cevap verir.</p></div><button class="btn" id="padd" type="button">Ürün ekle</button></div>
+      <div class="card" id="pform" hidden>
+        <h3 id="pform-title">Yeni ürün ekle</h3>
         <p class="hint">Ürün kodu Trendyol'daki <code>product_main_id</code> (Model Kodu) ile birebir aynı olmalı. Var olan bir kodu girersen bilgisi güncellenir.</p>
         <label for="pid">Ürün kodu</label><input id="pid" type="text" autocomplete="off">
         <label for="pinfo">Ürün bilgisi</label><textarea id="pinfo" maxlength="20000"></textarea>
-        <div class="row"><button class="btn" id="psave" type="button">Ürünü kaydet</button><button class="btn alt" id="pclear" type="button">Temizle</button></div>
+        <div class="row"><button class="btn" id="psave" type="button">Ürünü kaydet</button><button class="btn alt" id="pcancel" type="button">Vazgeç</button></div>
       </div>
 
       <div class="card">
@@ -373,8 +373,7 @@ $("#qlist").onclick = async (ev) => {
   const t = ev.target;
   if (t.dataset.addp) {
     location.hash = "#urunler"; showTab();
-    $("#pid").value = t.dataset.addp; $("#pinfo").value = "";
-    $("#pid").scrollIntoView({ block: "center" }); $("#pinfo").focus();
+    openForm(t.dataset.addp, "", false); $("#pinfo").focus();
     return;
   }
   if (t.dataset.retry) {
@@ -416,7 +415,7 @@ function renderProducts() {
   $("#pcount").textContent = all.length;
   const list = q ? all.filter((p) => [p.product_main_id, p.info].some((v) => String(v ?? "").toLowerCase().includes(q))) : all;
   const box = $("#plist");
-  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>Yukarıdaki formdan elle ekle ya da CSV yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
+  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Henüz ürün yok</h3><p>"Ürün ekle" ile elle ekle ya da CSV yükle. Asistan, ürünü burada bulamazsa soruyu cevaplamadan atlar.</p></div>`; return; }
   if (!list.length) { box.innerHTML = `<div class="empty"><h3>Eşleşen ürün yok</h3><p>Aramayı değiştir.</p></div>`; return; }
   box.innerHTML = `<div class="plist">${list.map((p) => `<div class="prow"><code>${esc(p.product_main_id)}</code><span class="i">${esc(String(p.info ?? "").slice(0, 200))}</span><span class="acts"><button class="btn alt sm" type="button" data-edit="${esc(p.product_main_id)}">Düzenle</button><button class="btn alt sm" type="button" data-del="${esc(p.product_main_id)}">Sil</button></span></div>`).join("")}</div>`;
 }
@@ -426,8 +425,7 @@ $("#plist").onclick = async (ev) => {
   const t = ev.target;
   if (t.dataset.edit) {
     const p = state.products.find((x) => x.product_main_id === t.dataset.edit); if (!p) return;
-    $("#pid").value = p.product_main_id; $("#pinfo").value = p.info;
-    $("#pid").scrollIntoView({ block: "center" }); $("#pinfo").focus();
+    openForm(p.product_main_id, p.info, true); $("#pinfo").focus();
     return;
   }
   if (t.dataset.del) {
@@ -442,7 +440,19 @@ $("#plist").onclick = async (ev) => {
   }
 };
 
-$("#pclear").onclick = () => { $("#pid").value = ""; $("#pinfo").value = ""; };
+function openForm(id, info, editing) {
+  $("#pform").hidden = false;
+  $("#pid").value = id; $("#pinfo").value = info; $("#pid").readOnly = !!editing;
+  $("#pform-title").textContent = editing ? "Ürünü düzenle" : "Yeni ürün ekle";
+  $("#pform").scrollIntoView({ block: "center" });
+}
+function closeForm() {
+  $("#pform").hidden = true;
+  $("#pid").value = ""; $("#pinfo").value = ""; $("#pid").readOnly = false;
+}
+$("#padd").onclick = () => { openForm("", "", false); $("#pid").focus(); };
+$("#pcancel").onclick = closeForm;
+$("#pform").onkeydown = (e) => { if (e.key === "Escape") closeForm(); };
 $("#psave").onclick = async (ev) => {
   const id = $("#pid").value.trim(), info = $("#pinfo").value.trim();
   if (!id || !info) { toast("Ürün kodu ve ürün bilgisi boş olamaz.", true); return; }
@@ -453,7 +463,7 @@ $("#psave").onclick = async (ev) => {
     const { error } = await sb.from("products").upsert({ user_id: session.user.id, product_main_id: id, info }, { onConflict: "user_id,product_main_id" });
     if (error) throw error;
     toast(had ? "Ürün güncellendi." : "Ürün eklendi.");
-    $("#pid").value = ""; $("#pinfo").value = "";
+    closeForm();
     await loadProducts(); renderQuestions();
   } catch (e) { toast(e.message, true); }
   b.disabled = false;
