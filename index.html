@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Z5C6xnO1Fj098TkP5W7hKLReq8dkvgG7ESGwhozmldE=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1Z8VAXRE9le/ttOCTMqsI5/GvK4fFOT5sjgrSTktJIk=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Soru Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +44,7 @@ button,input,textarea,select{font:inherit;color:inherit}
 .nav a span:first-of-type{flex:1}
 .nav a:hover{background:var(--sunk);color:var(--ink)}
 .nav a[aria-current=page]{background:var(--soft);color:var(--accent)}
-.nav a.parent-active{color:var(--ink)}
+.nav a.parent-active{background:var(--soft);color:var(--accent)}
 .navgroup{position:relative}
 .navgroup > a{padding-right:40px}
 .navtoggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--mute);display:grid;place-items:center;cursor:pointer}
@@ -248,13 +248,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
   <aside class="rail">
     <div class="brand"><span class="mark" aria-hidden="true"></span>Soru Asistanı</div>
     <nav class="nav" aria-label="Bölümler">
-      <div class="navgroup">
-        <a href="#sorular" data-tab="sorular"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/></svg><span>Sorular</span><span class="badge" id="nav-badge" hidden>0</span></a>
-        <button class="navtoggle" id="navtoggle" type="button" aria-expanded="true" aria-controls="subnav" aria-label="Sorular alt menüsünü aç/kapat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      </div>
-      <div class="subnav" id="subnav">
-        <a href="#ornekler" data-tab="ornekler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10M7 11h10M7 15h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg><span>Örnekler</span></a>
-      </div>
+      <a href="#sorular" data-tab="sorular"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/></svg><span>Sorular</span><span class="badge" id="nav-badge" hidden>0</span></a>
       <a href="#urunler" data-tab="urunler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg><span>Ürünler</span></a>
       <a href="#ayarlar" data-tab="ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Ayarlar</span></a>
     </nav>
@@ -265,7 +259,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     <section id="tab-sorular">
       <div class="page-head">
         <div><h2>Sorular</h2><p>Taslak cevabı kontrol et, gerekirse düzelt ve gönder.</p></div>
-        <div class="head-actions"><span class="conn" id="conn-pill">Yükleniyor</span><a class="btn alt only-mobile-inline" href="#ornekler">Örnekler</a><button class="btn" id="check-now" type="button">Şimdi kontrol et</button></div>
+        <div class="head-actions"><span class="conn" id="conn-pill">Yükleniyor</span><a class="btn alt" href="#ornekler">Örnekler</a><button class="btn" id="check-now" type="button">Şimdi kontrol et</button></div>
       </div>
       <div class="banner" id="err-banner" hidden></div>
       <div class="toolbar">
@@ -399,18 +393,11 @@ function showTab() {
   TABS.forEach((n) => {
     $("#tab-" + n).hidden = n !== t;
     const a = document.querySelector(`[data-tab="${n}"]`);
+    if (!a) return;
     if (n === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   $('[data-tab="sorular"]').classList.toggle("parent-active", t === "ornekler");
-  if (t === "ornekler" && $("#subnav").hidden) setNav(true);
 }
-
-function setNav(open) {
-  $("#navtoggle").setAttribute("aria-expanded", String(open)); $("#subnav").hidden = !open;
-  try { localStorage.setItem("subnav", open ? "1" : "0"); } catch {}
-}
-$("#navtoggle").onclick = () => setNav($("#navtoggle").getAttribute("aria-expanded") !== "true");
-{ let open = true; try { open = localStorage.getItem("subnav") !== "0"; } catch {} setNav(open); }
 
 async function refresh() {
   const { data: { session } } = await sb.auth.getSession();
