@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1Z8VAXRE9le/ttOCTMqsI5/GvK4fFOT5sjgrSTktJIk=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gkh4WtFZUA+CIYzv/NRaxOgf+Mg6vjFPL/b3iTUF0do=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Soru Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,6 +58,9 @@ button,input,textarea,select{font:inherit;color:inherit}
 .crumb::after{content:" /";color:var(--faint)}
 .crumb:hover{color:var(--accent)}
 .only-mobile-inline{display:none}
+.linkbtn{background:none;border:0;padding:0;margin-top:16px;color:var(--accent);font-weight:500;font-size:14px;cursor:pointer}
+.linkbtn:hover{text-decoration:underline}
+.sgrid #mfa-off,.sgrid #mfa-on{margin-top:auto;padding-top:18px}
 .badge{min-width:22px;padding:0 7px;border-radius:999px;background:var(--warn);color:var(--panel);font-size:12px;font-weight:600;text-align:center;line-height:20px}
 .who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);color:var(--mute);font-size:13px;word-break:break-all}
 .who button{margin-top:10px}
@@ -220,6 +223,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     <label for="email" style="margin-top:0">E-posta</label><input id="email" type="email" autocomplete="email" required>
     <label for="pass">Parola</label><input id="pass" type="password" autocomplete="current-password" required>
     <div class="row"><button class="btn" id="login" type="submit">Giriş yap</button><button class="btn alt" id="signup" type="button">Kayıt ol</button></div>
+    <button class="linkbtn" id="forgot" type="button">Şifremi unuttum</button>
     <p class="note" id="auth-msg" role="status"></p>
   </form>
 </div>
@@ -232,6 +236,18 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
     <label for="mfacode" class="sr">Doğrulama kodu</label><input id="mfacode" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
     <div class="row"><button class="btn" type="submit">Doğrula</button><button class="btn alt" id="logout4" type="button">Çıkış yap</button></div>
     <p class="note err" id="mfa-msg" role="status"></p>
+  </form>
+</div>
+
+<div class="gate" id="recover" hidden>
+  <form class="gate-card" id="recover-form">
+    <span class="mark" aria-hidden="true"></span>
+    <h1>Yeni parola belirle</h1>
+    <p class="sub">En az 8 karakterlik yeni bir parola gir.</p>
+    <label for="newpass" style="margin-top:0">Yeni parola</label><input id="newpass" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="newpass2">Yeni parola (tekrar)</label><input id="newpass2" type="password" autocomplete="new-password" minlength="8" required>
+    <div class="row"><button class="btn" type="submit">Parolayı kaydet</button></div>
+    <p class="note err" id="recover-msg" role="status"></p>
   </form>
 </div>
 
@@ -331,7 +347,7 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
         <label class="switch"><input type="checkbox" id="auto" role="switch"><span>Uygun cevapları onay beklemeden gönder<small>Kapalıyken her cevap senin onayını bekler. Açıkken kontrolden geçen cevaplar doğrudan müşteriye gider.</small></span></label>
       </div>
 
-      <div class="card wide">
+      <div class="card">
         <h3>İki adımlı doğrulama <span class="pill" id="mfa-pill">-</span></h3>
         <p class="hint">Açıkken girişte parolana ek olarak Google Authenticator gibi bir uygulamanın ürettiği 6 haneli kod istenir.</p>
         <div class="row" id="mfa-off"><button class="btn" id="mfa-start" type="button">Etkinleştir</button></div>
@@ -343,6 +359,14 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
           <div class="row"><button class="btn" id="mfa-confirm" type="button">Doğrula ve aç</button><button class="btn alt" id="mfa-cancel" type="button">Vazgeç</button></div>
         </div>
         <div class="row" id="mfa-on" hidden><button class="btn alt" id="mfa-disable" type="button">Kapat</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Parola</h3>
+        <p class="hint">En az 8 karakter. Başka bir sitede kullanmadığın, tahmin edilmesi zor bir parola seç.</p>
+        <label for="pw1">Yeni parola</label><input id="pw1" type="password" autocomplete="new-password" minlength="8">
+        <label for="pw2">Yeni parola (tekrar)</label><input id="pw2" type="password" autocomplete="new-password" minlength="8">
+        <div class="row"><button class="btn" id="pw-save" type="button">Parolayı değiştir</button></div>
       </div>
       </div>
 
@@ -361,6 +385,10 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ""; throw
 // Bu iki değer herkese açık olabilir (güvenliği RLS ve giriş sağlar). service_role anahtarını ASLA buraya koyma.
 const SUPABASE_URL = "https://ychhefzfregkspjskpgh.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljaGhlZnpmcmVna3NwanNrcGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzkxNjYsImV4cCI6MjExMDg1NTE2Nn0.6y05vuq0DdWqMmiJ58whLeDheU7qf55_I1lqjzhdaEQ";
+
+// E-postadaki sıfırlama bağlantısıyla gelindiyse (istemci adres çubuğunu temizlemeden önce yakala)
+let recovering = location.hash.includes("type=recovery");
+const linkError = /error_description=/.test(location.hash) ? "Bağlantı geçersiz ya da süresi dolmuş. Şifremi unuttum ile yeniden iste." : "";
 
 const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
 const $ = (s) => document.querySelector(s);
@@ -401,13 +429,14 @@ function showTab() {
 
 async function refresh() {
   const { data: { session } } = await sb.auth.getSession();
-  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true; $("#mfa").hidden = true;
+  $("#auth").hidden = !!session; $("#app").hidden = !session; $("#pending").hidden = true; $("#mfa").hidden = true; $("#recover").hidden = true;
   if (!session) return;
   const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
   if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
     $("#app").hidden = true; $("#mfa").hidden = false; $("#mfacode").focus();
     return;
   }
+  if (recovering) { $("#app").hidden = true; $("#recover").hidden = false; $("#newpass").focus(); return; }
   $("#who").textContent = session.user.email;
   showTab();
   try { state.st = await api("status"); } catch (e) { state.st = null; toast(e.message, true); }
@@ -810,8 +839,47 @@ $("#signup").onclick = async () => {
 $("#logout").onclick = $("#logout2").onclick = $("#logout3").onclick = $("#logout4").onclick = async () => { await sb.auth.signOut(); };
 $("#recheck").onclick = refresh;
 
+// ---------- Parola ----------
+function pwErr(m) {
+  if (/different from the old/i.test(m)) return "Yeni parola eskisiyle aynı olamaz.";
+  if (/at least|weak|short|characters/i.test(m)) return "Parola çok zayıf, daha uzun bir parola seç.";
+  if (/aal2|reauthenticat/i.test(m)) return "Önce iki adımlı doğrulama kodunu gir, sonra tekrar dene.";
+  if (/rate limit|too many/i.test(m)) return "Çok fazla deneme yapıldı, biraz sonra tekrar dene.";
+  return m;
+}
+function checkPw(p1, p2) {
+  if (p1.length < 8) return "Parola en az 8 karakter olmalı.";
+  if (p1 !== p2) return "Parolalar aynı değil.";
+  return "";
+}
+$("#forgot").onclick = async () => {
+  const email = $("#email").value.trim(), msg = $("#auth-msg");
+  if (!email) { msg.textContent = "Önce e-posta adresini yaz, sonra Şifremi unuttum'a bas."; $("#email").focus(); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  msg.textContent = error ? pwErr(error.message) : "Bu adrese kayıtlı bir hesap varsa sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.";
+};
+$("#recover-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const msg = $("#recover-msg"), bad = checkPw($("#newpass").value, $("#newpass2").value);
+  msg.textContent = bad; if (bad) return;
+  const { error } = await sb.auth.updateUser({ password: $("#newpass").value });
+  if (error) { msg.textContent = pwErr(error.message); return; }
+  recovering = false; $("#newpass").value = ""; $("#newpass2").value = "";
+  toast("Parolan güncellendi."); await refresh();
+};
+$("#pw-save").onclick = async (ev) => {
+  const bad = checkPw($("#pw1").value, $("#pw2").value);
+  if (bad) { toast(bad, true); return; }
+  const b = ev.currentTarget; b.disabled = true;
+  const { error } = await sb.auth.updateUser({ password: $("#pw1").value });
+  b.disabled = false;
+  if (error) { toast(pwErr(error.message), true); return; }
+  $("#pw1").value = ""; $("#pw2").value = ""; toast("Parolan değiştirildi.");
+};
+if (linkError) $("#auth-msg").textContent = linkError;
+
 window.addEventListener("hashchange", showTab);
-sb.auth.onAuthStateChange(() => { setTimeout(refresh, 0); }); // callback içinde await etme: kilitlenir
+sb.auth.onAuthStateChange((event) => { if (event === "PASSWORD_RECOVERY") recovering = true; setTimeout(refresh, 0); }); // callback içinde await etme: kilitlenir
 refresh();
 </script>
 </body>
