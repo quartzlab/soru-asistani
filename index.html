@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-esWVaVyJRFAxdx5JALhKZEGnFyNoigiTbpkLOuodwhI=' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ychhefzfregkspjskpgh.supabase.co wss://ychhefzfregkspjskpgh.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Soru Asistanı</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -248,8 +250,11 @@ select{max-width:280px}
 
 <div id="toast" role="status" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
 <script>
+// Başka bir sitenin çerçevesi içinde açılmayı reddet (tıklama hilesine karşı)
+if (window.top !== window.self) { document.documentElement.innerHTML = ""; throw new Error("frame"); }
+
 // Bu iki değer herkese açık olabilir (güvenliği RLS ve giriş sağlar). service_role anahtarını ASLA buraya koyma.
 const SUPABASE_URL = "https://ychhefzfregkspjskpgh.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljaGhlZnpmcmVna3NwanNrcGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzkxNjYsImV4cCI6MjExMDg1NTE2Nn0.6y05vuq0DdWqMmiJ58whLeDheU7qf55_I1lqjzhdaEQ";
@@ -369,7 +374,7 @@ function questionCard(q) {
   const conf = q.confidence != null ? `<span class="pill">Güven %${Math.round(q.confidence * 100)}</span>` : "";
   let reply;
   if (q.status === "pending_review") {
-    reply = `<label class="cap" for="d${q.id}" style="margin:0 0 4px;font-weight:400">Taslak cevap</label><textarea id="d${q.id}" data-d="${q.id}">${esc(q.draft)}</textarea>
+    reply = `${q.error ? `<p class="note err" style="margin:0 0 8px">${esc(q.error)}</p>` : ""}<label class="cap" for="d${q.id}" style="margin:0 0 4px;font-weight:400">Taslak cevap</label><textarea id="d${q.id}" data-d="${q.id}">${esc(q.draft)}</textarea>
       <div class="rfoot"><span class="count" data-c="${q.id}">${(q.draft || "").length} / 2000</span><button class="btn" type="button" data-send="${q.id}">Onayla ve gönder</button></div><p class="note err" data-m="${q.id}" hidden></p>`;
   } else if (q.draft) {
     reply = `<p class="cap">${q.status === "sent" ? "Gönderilen cevap" : "Taslak cevap"}</p><p class="sent-text">${esc(q.draft)}</p>${q.error ? `<p class="note err">${esc(q.error)}</p>` : ""}${skipHelp(q)}`;
