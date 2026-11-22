@@ -105,8 +105,12 @@ code{font-family:var(--mono);background:var(--chip);color:var(--mute);padding:1p
 .note{margin-top:8px;color:var(--mute);font-size:13px;overflow-wrap:anywhere}
 .note.err{color:var(--bad)}
 .sgrid{display:flex;flex-direction:column;gap:16px}
-.sgrid .card{margin:0}
+.sgrid .card{margin:0;display:grid;grid-template-columns:250px minmax(0,1fr);gap:10px 40px;padding:24px}
+.s-info h3{justify-content:flex-start}
+.s-body > :first-child,.s-body #mfa-on,.s-body #mfa-off{margin-top:0}
+.s-body .row{margin-top:16px}
 .sgrid input[type=text],.sgrid input[type=password],.sgrid select{max-width:460px}
+@media (max-width:900px){.sgrid .card{grid-template-columns:1fr;gap:14px;padding:20px}}
 
 /* sorular: konuşma akışı */
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--line)}
@@ -316,36 +320,55 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
       <div class="sgrid">
 
       <div class="card">
+        <div class="s-info">
         <h3>Trendyol bağlantısı <span class="pill" id="ty-pill">-</span></h3>
         <p class="hint">Satıcı Paneli &gt; Hesap Bilgilerim &gt; Entegrasyon Bilgileri sayfasından alırsın. Güncellerken üç alanı da yeniden gir.</p>
+        </div>
+        <div class="s-body">
         <label for="sid">Satıcı ID</label><input id="sid" name="ty-seller-id" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-1p-ignore data-lpignore="true">
         <label for="akey">API Key</label><input id="akey" name="ty-api-key" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
         <label for="asec">API Secret</label><input id="asec" name="ty-api-secret" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
         <div class="row"><button class="btn" id="save-cred" type="button">Bağlantıyı kaydet</button></div>
+        </div>
       </div>
 
       <div class="card">
+        <div class="s-info">
         <h3>Anthropic API anahtarı <span class="pill" id="ai-pill">-</span></h3>
         <p class="hint">Anahtarı console.anthropic.com &gt; API Keys sayfasından alırsın. Cevap üretme ücreti senin Anthropic hesabından düşer. Önce Trendyol bağlantısını kaydet.</p>
+        </div>
+        <div class="s-body">
         <label for="claudekey">API anahtarı</label><input id="claudekey" name="anthropic-key" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true">
         <div class="row"><button class="btn" id="save-claude" type="button">Anahtarı kaydet</button></div>
+        </div>
       </div>
 
       <div class="card">
+        <div class="s-info">
         <h3>Kontrol sıklığı</h3>
         <p class="hint">Yeni soruların Trendyol'dan ne sıklıkla çekileceği. Sık kontrol cevabı hızlandırır ama Trendyol'a daha çok istek gönderir; çoğu mağaza için 5 dakika yeterlidir.</p>
+        </div>
+        <div class="s-body">
         <label for="interval">Kontrol aralığı</label>
         <select id="interval"><option value="1">1 dakikada bir</option><option value="5">5 dakikada bir</option><option value="15">15 dakikada bir</option><option value="30">30 dakikada bir</option><option value="60">Saatte bir</option></select>
+        </div>
       </div>
 
       <div class="card">
+        <div class="s-info">
         <h3>Gönderim</h3>
+        </div>
+        <div class="s-body">
         <label class="switch"><input type="checkbox" id="auto" role="switch"><span>Uygun cevapları onay beklemeden gönder<small>Kapalıyken her cevap senin onayını bekler. Açıkken kontrolden geçen cevaplar doğrudan müşteriye gider.</small></span></label>
+        </div>
       </div>
 
       <div class="card">
+        <div class="s-info">
         <h3>İki adımlı doğrulama <span class="pill" id="mfa-pill">-</span></h3>
         <p class="hint">Açıkken girişte parolana ek olarak Google Authenticator gibi bir uygulamanın ürettiği 6 haneli kod istenir.</p>
+        </div>
+        <div class="s-body">
         <div class="row" id="mfa-off"><button class="btn" id="mfa-start" type="button">Etkinleştir</button></div>
         <div id="mfa-setup" hidden>
           <p class="note">Doğrulayıcı uygulamada bu QR kodu okut. Okutamıyorsan alttaki kodu elle gir.</p>
@@ -355,14 +378,19 @@ input[type=file]::file-selector-button:hover{border-color:var(--accent)}
           <div class="row"><button class="btn" id="mfa-confirm" type="button">Doğrula ve aç</button><button class="btn alt" id="mfa-cancel" type="button">Vazgeç</button></div>
         </div>
         <div class="row" id="mfa-on" hidden><button class="btn alt" id="mfa-disable" type="button">Kapat</button></div>
+        </div>
       </div>
 
       <div class="card">
+        <div class="s-info">
         <h3>Parola</h3>
         <p class="hint">En az 8 karakter. Başka bir sitede kullanmadığın, tahmin edilmesi zor bir parola seç.</p>
+        </div>
+        <div class="s-body">
         <label for="pw1">Yeni parola</label><input id="pw1" type="password" autocomplete="new-password" minlength="8">
         <label for="pw2">Yeni parola (tekrar)</label><input id="pw2" type="password" autocomplete="new-password" minlength="8">
         <div class="row"><button class="btn" id="pw-save" type="button">Parolayı değiştir</button></div>
+        </div>
       </div>
       </div>
 
